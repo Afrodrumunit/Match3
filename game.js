@@ -83,13 +83,15 @@
   }
 
   function findHint() {
+    const options = [];
     for (let r = 0; r < SIZE; r++) {
       for (let c = 0; c < SIZE; c++) {
-        if (c + 1 < SIZE && createsMatch(r, c, r, c + 1)) return [[r, c], [r, c + 1]];
-        if (r + 1 < SIZE && createsMatch(r, c, r + 1, c)) return [[r, c], [r + 1, c]];
+        if (c + 1 < SIZE && createsMatch(r, c, r, c + 1)) options.push([[r, c], [r, c + 1]]);
+        if (r + 1 < SIZE && createsMatch(r, c, r + 1, c)) options.push([[r, c], [r + 1, c]]);
       }
     }
-    return null;
+    if (options.length === 0) return null;
+    return options[Math.floor(Math.random() * options.length)];
   }
 
   function makeTile(r, c, type) {
@@ -314,6 +316,8 @@
     if (busy || gameOver) return;
     const cell = cellFromEvent(e);
     if (!cell) return;
+    clearTimeout(hintTimer);
+    clearHints();
     pointerStart = { r: cell.r, c: cell.c, x: e.clientX, y: e.clientY, moved: false };
     boardEl.setPointerCapture(e.pointerId);
   });

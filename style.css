@@ -124,28 +124,37 @@ h1 {
   justify-content: center;
   font-size: clamp(1.2rem, 6.5vw, 2rem);
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.2s ease;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
   will-change: transform;
 }
 
+.tile span {
+  display: block;
+  transition: transform 0.15s ease, opacity 0.2s ease;
+  pointer-events: none;
+}
+
 .tile.selected {
-  transform: scale(1.12);
   box-shadow: 0 0 0 3px #fff, 0 0 14px rgba(255, 255, 255, 0.7);
   z-index: 2;
 }
 
-.tile.matched {
+.tile.selected span {
+  transform: scale(1.15);
+}
+
+.tile.matched span {
   opacity: 0;
   transform: scale(0.3);
 }
 
-.tile.hint {
+.tile.hint span {
   animation: pulse 0.9s ease-in-out infinite;
 }
 
 @keyframes pulse {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.15); }
+  50% { transform: scale(1.18); }
 }
 
 .message {
