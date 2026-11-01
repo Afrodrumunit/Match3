@@ -231,8 +231,8 @@ import { createBoardView } from "./boardView.js";
     state = createState();
     selected = null;
     setMessage("");
+    applyTheme(themeForLevel(1));
     updateHud();
-    view.renderBoard();
     scheduleHint();
   });
 
