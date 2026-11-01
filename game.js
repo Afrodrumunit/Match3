@@ -2,12 +2,11 @@ import {
   SIZE, SPECIAL_BOMB, LEVEL_STEP,
   findHint, createState, trySwap, resolveStep, endTurn, reshuffle,
 } from "./engine.js";
+import { N as NOTE, themeForLevel } from "./themes.js";
 
 (() => {
   "use strict";
 
-  const TYPES = ["💎", "🔥", "🌊", "🍀", "⭐", "💜"];
-  const COLORS = ["#4fc3f7", "#ff8a65", "#4dd0e1", "#aed581", "#ffd54f", "#ba68c8"];
   const SWAP_MS = 170;
   const FALL_MS = 220;
   const POP_MS = 200;
@@ -246,7 +245,7 @@ import {
       } catch { /* ignore */ }
     }
 
-    const N = {
+    const SFX_N = {
       F2: 87.31, G2: 98.0, A2: 110.0, Bb2: 116.54, B2: 123.47, C3: 130.81, Cs3: 138.59,
       D3: 146.83, Eb3: 155.56, E3: 164.81, F3: 174.61, G3: 196.0, Gs3: 207.65, A3: 220.0,
       Bb3: 233.08, B3: 246.94, C4: 261.63, D4: 293.66, Eb4: 311.13, E4: 329.63, F4: 349.23,
@@ -254,36 +253,12 @@ import {
       G5: 783.99, A5: 880.0, C6: 1046.5,
     };
 
-    const BGM_CHORDS = [
-      [N.F2, N.C4, N.E4, N.A4, N.D5],
-      [N.C3, N.G3, N.B3, N.E4, N.A4],
-      [N.Bb2, N.F3, N.A3, N.D4, N.G4],
-      [N.G2, N.D3, N.F4, N.B3, N.E4],
-      [N.F2, N.C4, N.E4, N.A4, N.D5],
-      [N.A2, N.E3, N.Gs3, N.B3, N.E4],
-      [N.Bb2, N.F3, N.A3, N.D4, N.F4],
-      [N.E3, N.B3, N.D4, N.G4, N.C5],
-      [N.F2, N.C4, N.E4, N.A4, N.D5],
-      [N.C3, N.G3, N.B3, N.E4, N.A4],
-      [N.G2, N.D3, N.F3, N.B3, N.E4],
-      [N.A2, N.E3, N.Gs3, N.B3, N.D4],
-      [N.Bb2, N.F3, N.A3, N.C4, N.E4],
-      [N.G2, N.D3, N.F3, N.A3, N.D4],
-      [N.C3, N.G3, N.C4, N.E4, N.A4],
-      [N.Eb3, N.Bb3, N.D4, N.G4, N.C5],
-    ];
-    const BGM_PATTERNS = [
-      [0, 2, 1, 3, 4, 2],
-      [4, 3, 2, 1, 0, 2],
-      [0, 3, 1, 4, 2, 3],
-      [2, 4, 1, 3, 0, 1],
-      [1, 3, 4, 2, 0, 3],
-      [4, 1, 2, 0, 3, 1],
-      [0, 4, 2, 3, 1, 4],
-      [3, 0, 4, 1, 2, 0],
-    ];
-    const BAR_SEC = 3.6;
+    let bgmCfg = theme.bgm;
+    const BGM_CHORDS = () => bgmCfg.chords.map((names) => names.map((n) => NOTE[n]));
+    const BGM_PATTERNS = () => bgmCfg.patterns;
+    const BAR_SEC = () => bgmCfg.barSec;
     const bgm = {
+      setTheme(t) { bgmCfg = t.bgm; },
       timer: null,
       nextBar: 0,
       barIndex: 0,
@@ -306,15 +281,17 @@ import {
           const ahead = ac.currentTime + 1.0;
           while (this.nextBar < ahead) {
             const t = this.nextBar;
-            const bar = this.barIndex % BGM_CHORDS.length;
-            const chordNotes = BGM_CHORDS[bar];
-            const pattern = BGM_PATTERNS[bar % BGM_PATTERNS.length];
-            chordNotes.forEach((f) => pad(f, t, BAR_SEC * 1.15, 0.02));
+            const chords = BGM_CHORDS();
+            const bar = this.barIndex % chords.length;
+            const chordNotes = chords[bar];
+            const pattern = BGM_PATTERNS()[bar % BGM_PATTERNS().length];
+            const barSec = BAR_SEC();
+            chordNotes.forEach((f) => pad(f, t, barSec * 1.15, 0.02));
             if (filter) {
-              const sweep = 500 + 420 * (0.5 + 0.5 * Math.sin((bar / BGM_CHORDS.length) * Math.PI * 6));
+              const sweep = bgmCfg.filterBase + 420 * (0.5 + 0.5 * Math.sin((bar / chords.length) * Math.PI * 6));
               filter.frequency.setValueAtTime(sweep, t);
             }
-            const sixteenths = BAR_SEC / 4;
+            const sixteenths = barSec / 4;
             for (let i = 0; i < 6; i++) {
               const idx = pattern[i] % chordNotes.length;
               pluck(chordNotes[idx] * 2, t + i * sixteenths * 0.5, i % 2 === 0 ? 0.04 : 0.025);
@@ -322,8 +299,8 @@ import {
             if (bar % 2 === 0) kick(t, 0.16);
             snare(t + sixteenths * 2, 0.07);
             if (bar % 4 === 3) kick(t + sixteenths * 3, 0.1);
-            if (Math.random() < 0.6) crackle(t + Math.random() * BAR_SEC);
-            this.nextBar += BAR_SEC;
+            if (Math.random() < 0.6) crackle(t + Math.random() * barSec);
+            this.nextBar += barSec;
             this.barIndex++;
           }
         } catch { /* ignore */ }
@@ -335,7 +312,7 @@ import {
         const ac = ensure();
         if (ac && !chirped) {
           chirped = true;
-          chord([N.E5, N.G5, N.C6], 0.14, "square", 0.1, 0, 0.05);
+          chord([SFX_N.E5, SFX_N.G5, SFX_N.C6], 0.14, "square", 0.1, 0, 0.05);
           bgm.start();
         }
       },
@@ -366,30 +343,30 @@ import {
         tone(151, 0.14, "sawtooth", 0.08, 0, 104);
       },
       match(combo) {
-        const root = N.A4 * Math.pow(1.25, Math.min(combo - 1, 6));
+        const root = SFX_N.A4 * Math.pow(1.25, Math.min(combo - 1, 6));
         arp(root, 3, 0.1, "square", 0.13, 0, 0.05);
         chord([root * 1.5, root * 2], 0.12, "triangle", 0.07, 0.1);
       },
       special() {
-        chord([N.C4, N.E4, N.G4, N.C5], 0.28, "sawtooth", 0.11, 0, 0.04);
+        chord([SFX_N.C4, SFX_N.E4, SFX_N.G4, SFX_N.C5], 0.28, "sawtooth", 0.11, 0, 0.04);
         tone(90, 0.4, "square", 0.18, 0.02, 720);
-        arp(N.C5, 4, 0.09, "square", 0.1, 0.12, 0.06, 1.26);
+        arp(SFX_N.C5, 4, 0.09, "square", 0.1, 0.12, 0.06, 1.26);
       },
       fall() {
         tone(700, 0.05, "triangle", 0.08, 0, 420);
         tone(520, 0.05, "triangle", 0.06, 0.04, 320);
       },
       levelUp() {
-        arp(N.C5, 6, 0.14, "square", 0.14, 0, 0.09, 1.26);
-        chord([N.C5, N.E5, N.G5, N.C6], 0.5, "triangle", 0.08, 0.45);
+        arp(SFX_N.C5, 6, 0.14, "square", 0.14, 0, 0.09, 1.26);
+        chord([SFX_N.C5, SFX_N.E5, SFX_N.G5, SFX_N.C6], 0.5, "triangle", 0.08, 0.45);
       },
       gameOver() {
-        [N.G4, N.E4, N.C4, N.C4].forEach((f, i) => tone(f, 0.24, "square", 0.14, i * 0.2));
-        chord([N.C4, N.E4, N.G4], 0.7, "triangle", 0.08, 0.8);
+        [SFX_N.G4, SFX_N.E4, SFX_N.C4, SFX_N.C4].forEach((f, i) => tone(f, 0.24, "square", 0.14, i * 0.2));
+        chord([SFX_N.C4, SFX_N.E4, SFX_N.G4], 0.7, "triangle", 0.08, 0.8);
       },
       newGame() {
-        arp(N.C4, 5, 0.11, "square", 0.13, 0, 0.08, 1.335);
-        chord([N.C5, N.E5, N.G5], 0.3, "triangle", 0.08, 0.4);
+        arp(SFX_N.C4, 5, 0.11, "square", 0.13, 0, 0.08, 1.335);
+        chord([SFX_N.C5, SFX_N.E5, SFX_N.G5], 0.3, "triangle", 0.08, 0.4);
       },
     };
   })();
@@ -399,6 +376,7 @@ import {
   );
 
   let state = createState();
+  let theme = themeForLevel(1);
   let tiles = [];
   let best = Number(localStorage.getItem("gems-best") || 0);
   let busy = false;
@@ -421,10 +399,10 @@ import {
   function createTileEl(type, spec) {
     const el = document.createElement("div");
     el.className = "tile" + (spec ? " special" + (spec === SPECIAL_BOMB ? " special-bomb" : "") : "");
-    el.style.background = COLORS[type];
+    el.style.background = theme.colors[type];
     const glyph = spec === SPECIAL_BOMB ? "" : spec && spec.kind === "line" ? (spec.dir === "row" ? "↔" : "↕") : "";
     if (glyph) el.dataset.glyph = glyph;
-    el.innerHTML = `<span>${spec === SPECIAL_BOMB ? "💣" : TYPES[type]}</span>`;
+    el.innerHTML = `<span>${spec === SPECIAL_BOMB ? "💣" : theme.emojis[type]}</span>`;
     boardEl.appendChild(el);
     return el;
   }
@@ -457,7 +435,7 @@ import {
     const glyph = spec === SPECIAL_BOMB ? "" : spec && spec.kind === "line" ? (spec.dir === "row" ? "↔" : "↕") : "";
     if (glyph) el.dataset.glyph = glyph;
     else delete el.dataset.glyph;
-    el.innerHTML = `<span>${spec === SPECIAL_BOMB ? "💣" : TYPES[state.grid[r][c]]}</span>`;
+    el.innerHTML = `<span>${spec === SPECIAL_BOMB ? "💣" : theme.emojis[state.grid[r][c]]}</span>`;
   }
 
   function renderBoard() {
@@ -602,8 +580,9 @@ import {
 
     const end = endTurn(state);
     if (end.levelUp) {
-      setMessage(`Level ${state.level}! +10 moves`);
+      setMessage(`Level ${state.level} — ${theme.name} theme! +4 moves`);
       sfx.levelUp();
+      applyTheme(themeForLevel(state.level));
     }
     if (end.gameOver) {
       if (state.score > best) {
@@ -703,8 +682,15 @@ import {
     scheduleHint();
   });
 
+  function applyTheme(t) {
+    theme = t;
+    for (const [k, v] of Object.entries(t.css)) document.documentElement.style.setProperty(k, v);
+    sfx.setTheme(t);
+    renderBoard();
+  }
+
   bestEl.textContent = best;
+  applyTheme(theme);
   updateHud();
-  renderBoard();
   scheduleHint();
 })();
