@@ -1,14 +1,13 @@
+import {
+  SIZE, SPECIAL_BOMB, START_MOVES,
+  findHint, createState, trySwap, resolveStep, endTurn, reshuffle,
+} from "./engine.js";
+
 (() => {
   "use strict";
 
-  const SIZE = 8;
   const TYPES = ["💎", "🔥", "🌊", "🍀", "⭐", "💜"];
   const COLORS = ["#4fc3f7", "#ff8a65", "#4dd0e1", "#aed581", "#ffd54f", "#ba68c8"];
-  const SPECIAL_LINE = "line";
-  const SPECIAL_BOMB = "bomb";
-  const START_MOVES = 30;
-  const LEVEL_STEP = 500;
-  const LEVEL_BONUS_MOVES = 10;
   const SWAP_MS = 170;
   const FALL_MS = 220;
   const POP_MS = 200;
@@ -100,96 +99,14 @@
     window.addEventListener(evt, () => sfx.unlock(), { passive: true })
   );
 
-  let grid = [];
-  let special = [];
+  let state = createState();
   let tiles = [];
-  let score = 0;
-  let moves = START_MOVES;
-  let level = 1;
   let best = Number(localStorage.getItem("gems-best") || 0);
   let busy = false;
   let selected = null;
-  let gameOver = false;
   let hintTimer = null;
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-  function randType() {
-    return Math.floor(Math.random() * TYPES.length);
-  }
-
-  function typeAt(r, c) {
-    if (r < 0 || r >= SIZE || c < 0 || c >= SIZE) return -1;
-    return grid[r][c];
-  }
-
-  function findRuns() {
-    const runs = [];
-    for (let r = 0; r < SIZE; r++) {
-      let run = 1;
-      for (let c = 1; c <= SIZE; c++) {
-        if (c < SIZE && typeAt(r, c) !== -1 && typeAt(r, c) === typeAt(r, c - 1)) run++;
-        else {
-          if (run >= 3) runs.push({ cells: range(r, c - run, c).map((cc) => [r, cc]), horizontal: true });
-          run = 1;
-        }
-      }
-    }
-    for (let c = 0; c < SIZE; c++) {
-      let run = 1;
-      for (let r = 1; r <= SIZE; r++) {
-        if (r < SIZE && typeAt(r, c) !== -1 && typeAt(r, c) === typeAt(r - 1, c)) run++;
-        else {
-          if (run >= 3) runs.push({ cells: range(r - run, r).map((rr) => [rr, c]), horizontal: false });
-          run = 1;
-        }
-      }
-    }
-    return runs;
-  }
-
-  function range(a, b) {
-    const out = [];
-    for (let i = a; i < b; i++) out.push(i);
-    return out;
-  }
-
-  function findMatches() {
-    const matched = new Set();
-    for (const run of findRuns()) {
-      for (const [r, c] of run.cells) matched.add(r * SIZE + c);
-    }
-    return matched;
-  }
-
-  function createsMatch(r1, c1, r2, c2) {
-    [grid[r1][c1], grid[r2][c2]] = [grid[r2][c2], grid[r1][c1]];
-    const ok = findMatches().size > 0;
-    [grid[r1][c1], grid[r2][c2]] = [grid[r2][c2], grid[r1][c1]];
-    return ok;
-  }
-
-  function hasPossibleMove() {
-    for (let r = 0; r < SIZE; r++) {
-      for (let c = 0; c < SIZE; c++) {
-        if (c + 1 < SIZE && createsMatch(r, c, r, c + 1)) return true;
-        if (r + 1 < SIZE && createsMatch(r, c, r + 1, c)) return true;
-      }
-    }
-    return false;
-  }
-
-  function findHint() {
-    const options = [];
-    for (let r = 0; r < SIZE; r++) {
-      for (let c = 0; c < SIZE; c++) {
-        if (c + 1 < SIZE && createsMatch(r, c, r, c + 1)) options.push([[r, c], [r, c + 1]]);
-        if (r + 1 < SIZE && createsMatch(r, c, r + 1, c)) options.push([[r, c], [r + 1, c]]);
-      }
-    }
-    if (options.length === 0) return null;
-    return options[Math.floor(Math.random() * options.length)];
-  }
 
   function place(el, r, c, instant) {
     if (instant) el.style.transition = "none";
@@ -202,63 +119,54 @@
     el.dataset.c = c;
   }
 
-  function makeTile(r, c, type, spec) {
+  function createTileEl(type, spec) {
     const el = document.createElement("div");
     el.className = "tile" + (spec ? " special" : "");
     el.style.background = COLORS[type];
     el.innerHTML = `<span>${spec === SPECIAL_BOMB ? "💣" : TYPES[type]}</span>`;
-    el.dataset.r = r;
-    el.dataset.c = c;
     boardEl.appendChild(el);
+    return el;
+  }
+
+  function makeTile(r, c) {
+    const el = createTileEl(state.grid[r][c], state.special[r][c]);
     tiles[r][c] = el;
     place(el, r, c, true);
     return el;
   }
 
-  function spawnTile(r, c, type, spec, fromRow) {
-    const el = makeTile(fromRow !== undefined ? fromRow : r, c, type, spec);
-    if (fromRow !== undefined) {
-      el.style.transition = "none";
-      const fr = fromRow;
-      el.style.transform = `translate(calc(${c} * 100% + ${c} * var(--gap)), calc(${fr} * 100% + ${fr} * var(--gap)))`;
-      void el.offsetWidth;
-      el.style.transition = "";
-    }
+  function spawnTile(sp) {
+    const { r, c, type, fromRow } = sp;
+    const el = createTileEl(type, null);
+    tiles[r][c] = el;
+    el.style.transition = "none";
+    el.style.transform = `translate(calc(${c} * 100% + ${c} * var(--gap)), calc(${fromRow} * 100% + ${fromRow} * var(--gap)))`;
+    void el.offsetWidth;
+    el.style.transition = "";
     place(el, r, c);
     return el;
   }
 
-  function newBoard() {
+  function refreshTileFace(r, c) {
+    const el = tiles[r][c];
+    if (!el) return;
+    el.classList.toggle("special", !!state.special[r][c]);
+    el.innerHTML = `<span>${state.special[r][c] === SPECIAL_BOMB ? "💣" : TYPES[state.grid[r][c]]}</span>`;
+  }
+
+  function renderBoard() {
     boardEl.querySelectorAll(".score-popup").forEach((el) => el.remove());
     boardEl.innerHTML = "";
-    grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(-1));
-    special = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
     tiles = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
-    do {
-      for (let r = 0; r < SIZE; r++) {
-        for (let c = 0; c < SIZE; c++) {
-          let t;
-          do {
-            t = randType();
-          } while (
-            (c >= 2 && typeAt(r, c - 1) === t && typeAt(r, c - 2) === t) ||
-            (r >= 2 && typeAt(r - 1, c) === t && typeAt(r - 2, c) === t)
-          );
-          grid[r][c] = t;
-        }
-      }
-    } while (!hasPossibleMove());
     for (let r = 0; r < SIZE; r++) {
-      for (let c = 0; c < SIZE; c++) {
-        makeTile(r, c, grid[r][c], null);
-      }
+      for (let c = 0; c < SIZE; c++) makeTile(r, c);
     }
   }
 
   function updateHud() {
-    scoreEl.textContent = score;
-    movesEl.textContent = moves;
-    levelEl.textContent = level;
+    scoreEl.textContent = state.score;
+    movesEl.textContent = state.moves;
+    levelEl.textContent = state.level;
     bestEl.textContent = best;
   }
 
@@ -282,8 +190,8 @@
   function scheduleHint() {
     clearTimeout(hintTimer);
     hintTimer = setTimeout(() => {
-      if (busy || gameOver) return;
-      const hint = findHint();
+      if (busy || state.over) return;
+      const hint = findHint(state.grid);
       if (hint) {
         clearHints();
         hint.forEach(([r, c]) => tiles[r][c] && tiles[r][c].classList.add("hint"));
@@ -302,255 +210,102 @@
     }
   }
 
-  async function trySwap(r1, c1, r2, c2) {
-    if (busy || gameOver) return;
-    if (r1 < 0 || r1 >= SIZE || c1 < 0 || c1 >= SIZE || r2 < 0 || r2 >= SIZE || c2 < 0 || c2 >= SIZE) return;
-    if (Math.abs(r1 - r2) + Math.abs(c1 - c2) !== 1) return;
-    busy = true;
-    clearSelection();
-    clearHints();
-
-    [grid[r1][c1], grid[r2][c2]] = [grid[r2][c2], grid[r1][c1]];
-    [special[r1][c1], special[r2][c2]] = [special[r2][c2], special[r1][c1]];
+  async function animateSwap(r1, c1, r2, c2) {
     [tiles[r1][c1], tiles[r2][c2]] = [tiles[r2][c2], tiles[r1][c1]];
-    refreshTileFace(r1, c1);
-    refreshTileFace(r2, c2);
     place(tiles[r1][c1], r1, c1);
     place(tiles[r2][c2], r2, c2);
-    sfx.swap();
     await sleep(SWAP_MS);
-
-    const runs = findRuns();
-    if (runs.length === 0) {
-      [grid[r1][c1], grid[r2][c2]] = [grid[r2][c2], grid[r1][c1]];
-      [special[r1][c1], special[r2][c2]] = [special[r2][c2], special[r1][c1]];
-      [tiles[r1][c1], tiles[r2][c2]] = [tiles[r2][c2], tiles[r1][c1]];
-      refreshTileFace(r1, c1);
-      refreshTileFace(r2, c2);
-      place(tiles[r1][c1], r1, c1);
-      place(tiles[r2][c2], r2, c2);
-      sfx.invalid();
-      await sleep(SWAP_MS);
-      busy = false;
-      scheduleHint();
-      return;
-    }
-
-    moves--;
-    updateHud();
-    await resolveBoard(runs, [[r1, c1], [r2, c2]]);
-    busy = false;
-
-    const newLevel = Math.floor(score / LEVEL_STEP) + 1;
-    if (newLevel > level) {
-      level = newLevel;
-      moves += LEVEL_BONUS_MOVES;
-      setMessage(`Level ${level}! +${LEVEL_BONUS_MOVES} moves`);
-      sfx.levelUp();
-      updateHud();
-    }
-
-    if (moves <= 0) {
-      gameOver = true;
-      if (score > best) {
-        best = score;
-        localStorage.setItem("gems-best", String(best));
-        updateHud();
-      }
-      setMessage(`Game over! Final score: ${score}. Tap New Game to play again.`);
-      sfx.gameOver();
-    } else if (!hasPossibleMove()) {
-      setMessage("No moves left on board — reshuffling!");
-      await reshuffle();
-    }
-    scheduleHint();
   }
 
-  function refreshTileFace(r, c) {
-    const el = tiles[r][c];
-    if (!el) return;
-    el.classList.toggle("special", !!special[r][c]);
-    el.innerHTML = `<span>${special[r][c] === SPECIAL_BOMB ? "💣" : TYPES[grid[r][c]]}</span>`;
+  async function animateSwapBack(r1, c1, r2, c2) {
+    await animateSwap(r1, c1, r2, c2);
   }
 
-  function collectRunSets(runs) {
-    const matched = new Set();
-    const createdSpecials = [];
-    for (const run of runs) {
-      for (const [r, c] of run.cells) matched.add(r * SIZE + c);
-      if (run.cells.length >= 5) {
-        createdSpecials.push({ at: run.cells[2], kind: SPECIAL_BOMB });
-      } else if (run.cells.length === 4) {
-        const horizontal = run.horizontal;
-        const anchor = run.cells[0];
-        createdSpecials.push({ at: horizontal ? anchor : run.cells[1], kind: SPECIAL_LINE, dir: horizontal ? "row" : "col" });
-      }
-    }
-    return { matched, createdSpecials };
-  }
-
-  function detonate(g, sp, seeds) {
-    const doomed = new Set();
-    const queue = [];
-    for (const idx of seeds) {
-      const r = Math.floor(idx / SIZE);
-      const c = idx % SIZE;
-      if (sp[r][c]) queue.push(idx);
-    }
-    const seen = new Set();
-    while (queue.length > 0) {
-      const idx = queue.pop();
-      if (seen.has(idx)) continue;
-      seen.add(idx);
-      const r = Math.floor(idx / SIZE);
-      const c = idx % SIZE;
-      const s = sp[r][c];
-      if (s === SPECIAL_BOMB) {
-        const type = g[r][c];
-        for (let rr = 0; rr < SIZE; rr++) {
-          for (let cc = 0; cc < SIZE; cc++) {
-            if (g[rr][cc] === type) {
-              doomed.add(rr * SIZE + cc);
-              if (sp[rr][cc]) queue.push(rr * SIZE + cc);
-            }
-          }
-        }
-      } else if (s && s.kind === SPECIAL_LINE) {
-        if (s.dir === "row") {
-          for (let cc = 0; cc < SIZE; cc++) {
-            doomed.add(r * SIZE + cc);
-            if (sp[r][cc]) queue.push(r * SIZE + cc);
-          }
-        } else {
-          for (let rr = 0; rr < SIZE; rr++) {
-            doomed.add(rr * SIZE + c);
-            if (sp[rr][c]) queue.push(rr * SIZE + c);
-          }
-        }
-      }
-    }
-    return doomed;
-  }
-
-  async function resolveBoard(initialRuns, swappedCells) {
-    let combo = 0;
+  async function animateResolve() {
     let lastCount = 0;
-    let runs = initialRuns;
-    while (runs.length > 0) {
-      const { matched, createdSpecials } = collectRunSets(runs);
-      combo++;
-      lastCount = matched.size;
-
-      const seeds = new Set(matched);
-      for (const [r, c] of swappedCells || []) seeds.add(r * SIZE + c);
-      const blasted = detonate(grid, special, seeds);
-      for (const idx of blasted) matched.add(idx);
-
-      for (const cs of createdSpecials) {
-        const [r, c] = cs.at;
-        const idx = r * SIZE + c;
-        if (!blasted.has(idx) && grid[r][c] !== -1) {
-          matched.delete(idx);
-          special[r][c] = cs.kind === SPECIAL_BOMB ? SPECIAL_BOMB : { kind: SPECIAL_LINE, dir: cs.dir };
-          refreshTileFace(r, c);
-          popup(r, c, cs.kind === SPECIAL_BOMB ? "💣 Bomb!" : "⚡ Line!");
-        }
-      }
-
-      const gained = matched.size * 10 * combo;
-      score += gained;
-      const midR = Math.floor(SIZE / 2);
-      const midC = Math.floor(SIZE / 2);
-      popup(midR, midC, `+${gained}`);
-      updateHud();
-      if (blasted.size > 0) sfx.special();
-      else sfx.match(combo);
-
-      matched.forEach((idx) => {
-        const r = Math.floor(idx / SIZE);
-        const c = idx % SIZE;
+    let combo = 0;
+    let step;
+    while ((step = resolveStep(state)) !== null) {
+      combo = step.combo;
+      lastCount = step.popped.length;
+      for (const i of step.popped) {
+        const r = Math.floor(i / SIZE);
+        const c = i % SIZE;
         if (tiles[r][c]) tiles[r][c].classList.add("matched");
-      });
-      await sleep(blasted.size > 0 ? BLAST_MS : POP_MS);
-      matched.forEach((idx) => {
-        const r = Math.floor(idx / SIZE);
-        const c = idx % SIZE;
+      }
+      for (const cr of step.created) {
+        const [r, c] = cr.at;
+        refreshTileFace(r, c);
+        popup(r, c, cr.kind === SPECIAL_BOMB ? "💣 Bomb!" : "⚡ Line!");
+      }
+      popup(Math.floor(SIZE / 2), Math.floor(SIZE / 2), `+${step.gained}`);
+      updateHud();
+      if (step.blasted.size > 0) sfx.special();
+      else sfx.match(combo);
+      await sleep(step.blasted.size > 0 ? BLAST_MS : POP_MS);
+      for (const i of step.popped) {
+        const r = Math.floor(i / SIZE);
+        const c = i % SIZE;
         if (tiles[r][c]) {
           tiles[r][c].remove();
           tiles[r][c] = null;
-          grid[r][c] = -1;
-          special[r][c] = null;
         }
-      });
-      collapseAndRefill();
+      }
+      for (const mv of step.moved) {
+        const [fr, fc] = mv.from;
+        const [tr, tc] = mv.to;
+        tiles[tr][tc] = tiles[fr][fc];
+        tiles[fr][fc] = null;
+        refreshTileFace(tr, tc);
+        place(tiles[tr][tc], tr, tc);
+      }
+      for (const sp of step.spawned) spawnTile(sp);
       sfx.fall();
       await sleep(FALL_MS);
-      runs = findRuns();
-      swappedCells = null;
     }
     if (combo > 1) setMessage(`Combo x${combo}! Last match: ${lastCount} gems`);
     else setMessage("");
   }
 
-  function collapseAndRefill() {
-    for (let c = 0; c < SIZE; c++) {
-      let write = SIZE - 1;
-      for (let r = SIZE - 1; r >= 0; r--) {
-        if (grid[r][c] !== -1) {
-          if (write !== r) {
-            grid[write][c] = grid[r][c];
-            special[write][c] = special[r][c];
-            special[r][c] = null;
-            grid[r][c] = -1;
-            tiles[write][c] = tiles[r][c];
-            tiles[r][c] = null;
-            refreshTileFace(write, c);
-            place(tiles[write][c], write, c);
-          }
-          write--;
-        }
-      }
-      for (let r = write; r >= 0; r--) {
-        const t = randType();
-        grid[r][c] = t;
-        special[r][c] = null;
-        spawnTile(r, c, t, null, -1 - (write - r));
-      }
-    }
-  }
-
-  async function reshuffle() {
+  async function doSwap(r1, c1, r2, c2) {
+    if (busy || state.over) return;
     busy = true;
-    const flat = [];
-    for (let r = 0; r < SIZE; r++) {
-      for (let c = 0; c < SIZE; c++) {
-        flat.push({ t: grid[r][c], s: special[r][c] });
-      }
+    clearSelection();
+    clearHints();
+
+    await animateSwap(r1, c1, r2, c2);
+    const res = trySwap(state, r1, c1, r2, c2);
+    if (!res.accepted) {
+      sfx.invalid();
+      await animateSwapBack(r1, c1, r2, c2);
+      busy = false;
+      scheduleHint();
+      return;
     }
-    let attempts = 0;
-    do {
-      for (let i = flat.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [flat[i], flat[j]] = [flat[j], flat[i]];
-      }
-      let k = 0;
-      for (let r = 0; r < SIZE; r++) {
-        for (let c = 0; c < SIZE; c++) {
-          grid[r][c] = flat[k].t;
-          special[r][c] = flat[k].s;
-          k++;
-        }
-      }
-      attempts++;
-    } while ((findMatches().size > 0 || !hasPossibleMove()) && attempts < 200);
-    for (let r = 0; r < SIZE; r++) {
-      for (let c = 0; c < SIZE; c++) {
-        if (tiles[r][c]) tiles[r][c].remove();
-        makeTile(r, c, grid[r][c], special[r][c]);
-      }
+    sfx.swap();
+    await animateResolve();
+
+    const end = endTurn(state);
+    if (end.levelUp) {
+      setMessage(`Level ${state.level}! +10 moves`);
+      sfx.levelUp();
     }
-    await sleep(FALL_MS);
+    if (end.gameOver) {
+      if (state.score > best) {
+        best = state.score;
+        localStorage.setItem("gems-best", String(best));
+      }
+      setMessage(`Game over! Final score: ${state.score}. Tap New Game to play again.`);
+      sfx.gameOver();
+    } else if (end.needsReshuffle) {
+      setMessage("No moves left on board — reshuffling!");
+      reshuffle(state);
+      renderBoard();
+      await sleep(FALL_MS);
+    }
+    updateHud();
     busy = false;
+    scheduleHint();
   }
 
   function cellFromEvent(e) {
@@ -563,7 +318,7 @@
 
   boardEl.addEventListener("pointerdown", (e) => {
     sfx.unlock();
-    if (busy || gameOver) return;
+    if (busy || state.over) return;
     const cell = cellFromEvent(e);
     if (!cell) return;
     clearTimeout(hintTimer);
@@ -583,7 +338,7 @@
     let c2 = pointerStart.c;
     if (Math.abs(dx) > Math.abs(dy)) c2 += dx > 0 ? 1 : -1;
     else r2 += dy > 0 ? 1 : -1;
-    trySwap(pointerStart.r, pointerStart.c, r2, c2);
+    doSwap(pointerStart.r, pointerStart.c, r2, c2);
     pointerStart = null;
   });
 
@@ -602,7 +357,7 @@
       const sr = selected.r;
       const sc = selected.c;
       clearSelection();
-      trySwap(sr, sc, cell.r, cell.c);
+      doSwap(sr, sc, cell.r, cell.c);
       return;
     }
     clearSelection();
@@ -625,20 +380,16 @@
   restartBtn.addEventListener("click", () => {
     sfx.unlock();
     sfx.newGame();
-    score = 0;
-    moves = START_MOVES;
-    level = 1;
-    gameOver = false;
-    busy = false;
+    state = createState();
     selected = null;
     setMessage("");
     updateHud();
-    newBoard();
+    renderBoard();
     scheduleHint();
   });
 
   bestEl.textContent = best;
   updateHud();
-  newBoard();
+  renderBoard();
   scheduleHint();
 })();
