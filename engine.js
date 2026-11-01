@@ -1,8 +1,8 @@
 export const SIZE = 8;
 export const TYPE_COUNT = 6;
-export const START_MOVES = 30;
-export const LEVEL_STEP = 500;
-export const LEVEL_BONUS_MOVES = 10;
+export const START_MOVES = 25;
+export const LEVEL_STEP = 600;
+export const LEVEL_BONUS_MOVES = 4;
 
 export const SPECIAL_BOMB = "bomb";
 
