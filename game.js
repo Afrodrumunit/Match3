@@ -1,5 +1,5 @@
 import {
-  SIZE, SPECIAL_BOMB, START_MOVES,
+  SIZE, SPECIAL_BOMB, LEVEL_STEP,
   findHint, createState, trySwap, resolveStep, endTurn, reshuffle,
 } from "./engine.js";
 
@@ -19,6 +19,7 @@ import {
   const movesEl = document.getElementById("moves");
   const levelEl = document.getElementById("level");
   const bestEl = document.getElementById("best");
+  const progressFill = document.getElementById("progress-fill");
   const messageEl = document.getElementById("message");
   const restartBtn = document.getElementById("restart");
   const soundBtn = document.getElementById("sound");
@@ -164,6 +165,14 @@ import {
   function renderBoard() {
     boardEl.querySelectorAll(".score-popup").forEach((el) => el.remove());
     boardEl.innerHTML = "";
+    const slots = document.createElement("div");
+    slots.className = "slots";
+    for (let i = 0; i < SIZE * SIZE; i++) {
+      const s = document.createElement("div");
+      s.className = "slot";
+      slots.appendChild(s);
+    }
+    boardEl.appendChild(slots);
     tiles = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
     for (let r = 0; r < SIZE; r++) {
       for (let c = 0; c < SIZE; c++) makeTile(r, c);
@@ -175,6 +184,7 @@ import {
     movesEl.textContent = state.moves;
     levelEl.textContent = state.level;
     bestEl.textContent = best;
+    progressFill.style.width = `${Math.min(100, ((state.score % LEVEL_STEP) / LEVEL_STEP) * 100)}%`;
   }
 
   function setMessage(text) {
