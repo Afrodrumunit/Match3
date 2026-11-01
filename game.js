@@ -21,57 +21,73 @@
   const sfx = (() => {
     let ctx = null;
     let muted = localStorage.getItem("gems-muted") === "1";
+    let chirped = false;
 
     function ensure() {
       if (!ctx) {
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return null;
-        ctx = new AC();
+        try { ctx = new AC(); } catch { return null; }
       }
-      if (ctx.state === "suspended") ctx.resume();
+      if (ctx.state === "suspended") {
+        try { ctx.resume(); } catch { /* retried on next gesture */ }
+      }
       return ctx;
     }
 
-    function tone(freq, dur, type, vol, when, slideTo) {
+    function tone(freq, dur, type, vol, when = 0, slideTo = null) {
       if (muted) return;
-      const ac = ensure();
-      if (!ac) return;
-      const t = ac.currentTime + when;
-      const osc = ac.createOscillator();
-      const gain = ac.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, t);
-      if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
-      gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.exponentialRampToValueAtTime(vol, t + 0.012);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      osc.connect(gain).connect(ac.destination);
-      osc.start(t);
-      osc.stop(t + dur + 0.05);
+      try {
+        const ac = ensure();
+        if (!ac) return;
+        const t = ac.currentTime + when;
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, t);
+        if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.connect(gain);
+        gain.connect(ac.destination);
+        osc.start(t);
+        osc.stop(t + dur + 0.05);
+      } catch { /* audio must never break gameplay */ }
     }
 
     return {
-      unlock() { ensure(); },
+      unlock() {
+        const ac = ensure();
+        if (ac && !chirped) {
+          chirped = true;
+          tone(660, 0.08, "square", 0.15, 0, 990);
+        }
+      },
       get muted() { return muted; },
       toggle() {
         muted = !muted;
         localStorage.setItem("gems-muted", muted ? "1" : "0");
         return muted;
       },
-      swap() { tone(280, 0.09, "square", 0.08, 0, 520); },
-      invalid() { tone(160, 0.16, "square", 0.08, 0, 90); },
+      swap() { tone(280, 0.09, "square", 0.18, 0, 520); },
+      invalid() { tone(160, 0.16, "square", 0.18, 0, 90); },
       match(combo) {
         const base = 440 * Math.pow(1.25, Math.min(combo - 1, 6));
-        tone(base, 0.12, "square", 0.09, 0);
-        tone(base * 1.5, 0.14, "square", 0.07, 0.05);
+        tone(base, 0.12, "square", 0.2, 0);
+        tone(base * 1.5, 0.14, "square", 0.15, 0.05);
       },
-      fall() { tone(700, 0.06, "triangle", 0.05, 0, 350); },
+      fall() { tone(700, 0.06, "triangle", 0.1, 0, 350); },
       gameOver() {
-        [523, 415, 330, 262].forEach((f, i) => tone(f, 0.22, "square", 0.08, i * 0.18));
+        [523, 415, 330, 262].forEach((f, i) => tone(f, 0.22, "square", 0.16, i * 0.18));
       },
-      newGame() { [262, 330, 392, 523].forEach((f, i) => tone(f, 0.12, "square", 0.08, i * 0.08)); },
+      newGame() { [262, 330, 392, 523].forEach((f, i) => tone(f, 0.12, "square", 0.16, i * 0.08)); },
     };
   })();
+
+  ["pointerdown", "touchstart", "click"].forEach((evt) =>
+    window.addEventListener(evt, () => sfx.unlock(), { passive: true })
+  );
 
   let grid = [];
   let tiles = [];
@@ -428,7 +444,9 @@
 
   soundBtn.addEventListener("click", () => {
     sfx.unlock();
-    soundBtn.textContent = sfx.toggle() ? "🔇" : "🔊";
+    const nowMuted = sfx.toggle();
+    soundBtn.textContent = nowMuted ? "🔇" : "🔊";
+    if (!nowMuted) sfx.match(1);
   });
   soundBtn.textContent = sfx.muted ? "🔇" : "🔊";
 
