@@ -89,10 +89,104 @@ import {
       }
     }
 
+    let filter = null;
+    function pad(freq, t, dur, vol) {
+      if (muted) return;
+      try {
+        const ac = ensure();
+        if (!ac) return;
+        if (!filter) {
+          filter = ac.createBiquadFilter();
+          filter.type = "lowpass";
+          filter.frequency.value = 850;
+          filter.Q.value = 0.7;
+          filter.connect(master);
+        }
+        for (const det of [-4, 4]) {
+          const osc = ac.createOscillator();
+          const gain = ac.createGain();
+          osc.type = "sawtooth";
+          osc.frequency.setValueAtTime(freq, t);
+          osc.detune.setValueAtTime(det, t);
+          gain.gain.setValueAtTime(0.0001, t);
+          gain.gain.linearRampToValueAtTime(vol, t + dur * 0.4);
+          gain.gain.setValueAtTime(vol, t + dur * 0.7);
+          gain.gain.linearRampToValueAtTime(0.0001, t + dur);
+          osc.connect(gain);
+          gain.connect(filter);
+          osc.start(t);
+          osc.stop(t + dur + 0.05);
+        }
+      } catch { /* audio must never break gameplay */ }
+    }
+
+    function pluck(freq, t, vol) {
+      if (muted) return;
+      try {
+        const ac = ensure();
+        if (!ac) return;
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+        osc.connect(gain);
+        gain.connect(master);
+        osc.start(t);
+        osc.stop(t + 1);
+      } catch { /* audio must never break gameplay */ }
+    }
+
     const N = {
-      C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.0, A4: 440.0, B4: 493.88,
-      C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.0,
-      C6: 1046.5,
+      A2: 110.0, C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.0, A3: 220.0,
+      B3: 246.94, C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.0, A4: 440.0,
+      B4: 493.88, C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.0,
+      C6: 1046.5, E6: 1318.5,
+    };
+
+    const BGM_CHORDS = [
+      [N.A2, N.C4, N.E4, N.A4],
+      [N.F3, N.A3, N.C4, N.F4],
+      [N.C3, N.E4, N.G4, N.C5],
+      [N.G3, N.B3, N.D4, N.G4],
+    ];
+    const BGM_ARP = [0, 2, 1, 3, 2, 1];
+    const BAR_SEC = 4.2;
+    const bgm = {
+      timer: null,
+      nextBar: 0,
+      barIndex: 0,
+      start() {
+        const ac = ensure();
+        if (!ac || this.timer) return;
+        this.nextBar = ac.currentTime + 0.1;
+        this.barIndex = 0;
+        this.timer = setInterval(() => this.schedule(), 500);
+      },
+      stop() {
+        clearInterval(this.timer);
+        this.timer = null;
+      },
+      schedule() {
+        try {
+          const ac = ensure();
+          if (!ac || muted) return;
+          const ahead = ac.currentTime + 1.2;
+          while (this.nextBar < ahead) {
+            const t = this.nextBar;
+            const chordNotes = BGM_CHORDS[this.barIndex % BGM_CHORDS.length];
+            chordNotes.forEach((f) => pad(f, t, BAR_SEC * 1.05, 0.028));
+            for (let i = 0; i < 4; i++) {
+              const note = chordNotes[BGM_ARP[(this.barIndex * 4 + i) % BGM_ARP.length]] * 2;
+              pluck(note, t + i * (BAR_SEC / 4), 0.045);
+            }
+            this.nextBar += BAR_SEC;
+            this.barIndex++;
+          }
+        } catch { /* ignore */ }
+      },
     };
 
     return {
@@ -101,12 +195,15 @@ import {
         if (ac && !chirped) {
           chirped = true;
           chord([N.E5, N.G5, N.C6], 0.14, "square", 0.1, 0, 0.05);
+          bgm.start();
         }
       },
       get muted() { return muted; },
       toggle() {
         muted = !muted;
         localStorage.setItem("gems-muted", muted ? "1" : "0");
+        if (muted) bgm.stop();
+        else bgm.start();
         return muted;
       },
       swap() {
