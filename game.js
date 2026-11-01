@@ -389,24 +389,42 @@
     return { matched, createdSpecials };
   }
 
-  function expandSpecials() {
+  function detonate(g, sp, seeds) {
     const doomed = new Set();
-    for (let r = 0; r < SIZE; r++) {
-      for (let c = 0; c < SIZE; c++) {
-        const s = special[r][c];
-        if (!s) continue;
-        if (s === SPECIAL_BOMB) {
-          const type = grid[r][c];
-          for (let rr = 0; rr < SIZE; rr++) {
-            for (let cc = 0; cc < SIZE; cc++) {
-              if (grid[rr][cc] === type) doomed.add(rr * SIZE + cc);
+    const queue = [];
+    for (const idx of seeds) {
+      const r = Math.floor(idx / SIZE);
+      const c = idx % SIZE;
+      if (sp[r][c]) queue.push(idx);
+    }
+    const seen = new Set();
+    while (queue.length > 0) {
+      const idx = queue.pop();
+      if (seen.has(idx)) continue;
+      seen.add(idx);
+      const r = Math.floor(idx / SIZE);
+      const c = idx % SIZE;
+      const s = sp[r][c];
+      if (s === SPECIAL_BOMB) {
+        const type = g[r][c];
+        for (let rr = 0; rr < SIZE; rr++) {
+          for (let cc = 0; cc < SIZE; cc++) {
+            if (g[rr][cc] === type) {
+              doomed.add(rr * SIZE + cc);
+              if (sp[rr][cc]) queue.push(rr * SIZE + cc);
             }
           }
-        } else if (s.kind === SPECIAL_LINE) {
-          if (s.dir === "row") {
-            for (let cc = 0; cc < SIZE; cc++) doomed.add(r * SIZE + cc);
-          } else {
-            for (let rr = 0; rr < SIZE; rr++) doomed.add(rr * SIZE + c);
+        }
+      } else if (s && s.kind === SPECIAL_LINE) {
+        if (s.dir === "row") {
+          for (let cc = 0; cc < SIZE; cc++) {
+            doomed.add(r * SIZE + cc);
+            if (sp[r][cc]) queue.push(r * SIZE + cc);
+          }
+        } else {
+          for (let rr = 0; rr < SIZE; rr++) {
+            doomed.add(rr * SIZE + c);
+            if (sp[rr][c]) queue.push(rr * SIZE + c);
           }
         }
       }
@@ -423,17 +441,16 @@
       combo++;
       lastCount = matched.size;
 
-      const activated = [];
-      for (const [r, c] of swappedCells || []) {
-        const s = special[r][c];
-        if (s && !activated.includes(r * SIZE + c)) activated.push(r * SIZE + c);
-      }
-      const blasted = expandSpecials();
+      const seeds = new Set(matched);
+      for (const [r, c] of swappedCells || []) seeds.add(r * SIZE + c);
+      const blasted = detonate(grid, special, seeds);
       for (const idx of blasted) matched.add(idx);
 
       for (const cs of createdSpecials) {
         const [r, c] = cs.at;
-        if (grid[r][c] !== -1) {
+        const idx = r * SIZE + c;
+        if (!blasted.has(idx) && grid[r][c] !== -1) {
+          matched.delete(idx);
           special[r][c] = cs.kind === SPECIAL_BOMB ? SPECIAL_BOMB : { kind: SPECIAL_LINE, dir: cs.dir };
           refreshTileFace(r, c);
           popup(r, c, cs.kind === SPECIAL_BOMB ? "💣 Bomb!" : "⚡ Line!");
