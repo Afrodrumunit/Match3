@@ -4,15 +4,21 @@
   const SIZE = 8;
   const TYPES = ["💎", "🔥", "🌊", "🍀", "⭐", "💜"];
   const COLORS = ["#4fc3f7", "#ff8a65", "#4dd0e1", "#aed581", "#ffd54f", "#ba68c8"];
+  const SPECIAL_LINE = "line";
+  const SPECIAL_BOMB = "bomb";
   const START_MOVES = 30;
+  const LEVEL_STEP = 500;
+  const LEVEL_BONUS_MOVES = 10;
   const SWAP_MS = 170;
   const FALL_MS = 220;
   const POP_MS = 200;
+  const BLAST_MS = 260;
   const IDLE_HINT_MS = 6000;
 
   const boardEl = document.getElementById("board");
   const scoreEl = document.getElementById("score");
   const movesEl = document.getElementById("moves");
+  const levelEl = document.getElementById("level");
   const bestEl = document.getElementById("best");
   const messageEl = document.getElementById("message");
   const restartBtn = document.getElementById("restart");
@@ -77,7 +83,12 @@
         tone(base, 0.12, "square", 0.2, 0);
         tone(base * 1.5, 0.14, "square", 0.15, 0.05);
       },
+      special() {
+        tone(180, 0.3, "sawtooth", 0.2, 0, 1200);
+        tone(90, 0.35, "square", 0.16, 0.05, 600);
+      },
       fall() { tone(700, 0.06, "triangle", 0.1, 0, 350); },
+      levelUp() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.16, "square", 0.18, i * 0.1)); },
       gameOver() {
         [523, 415, 330, 262].forEach((f, i) => tone(f, 0.22, "square", 0.16, i * 0.18));
       },
@@ -90,9 +101,11 @@
   );
 
   let grid = [];
+  let special = [];
   let tiles = [];
   let score = 0;
   let moves = START_MOVES;
+  let level = 1;
   let best = Number(localStorage.getItem("gems-best") || 0);
   let busy = false;
   let selected = null;
@@ -110,15 +123,14 @@
     return grid[r][c];
   }
 
-  function findMatches() {
-    const matched = new Set();
+  function findRuns() {
+    const runs = [];
     for (let r = 0; r < SIZE; r++) {
       let run = 1;
       for (let c = 1; c <= SIZE; c++) {
-        if (c < SIZE && typeAt(r, c) !== -1 && typeAt(r, c) === typeAt(r, c - 1)) {
-          run++;
-        } else {
-          if (run >= 3) for (let k = 0; k < run; k++) matched.add(r * SIZE + (c - run + k));
+        if (c < SIZE && typeAt(r, c) !== -1 && typeAt(r, c) === typeAt(r, c - 1)) run++;
+        else {
+          if (run >= 3) runs.push({ cells: range(r, c - run, c).map((cc) => [r, cc]), horizontal: true });
           run = 1;
         }
       }
@@ -126,13 +138,26 @@
     for (let c = 0; c < SIZE; c++) {
       let run = 1;
       for (let r = 1; r <= SIZE; r++) {
-        if (r < SIZE && typeAt(r, c) !== -1 && typeAt(r, c) === typeAt(r - 1, c)) {
-          run++;
-        } else {
-          if (run >= 3) for (let k = 0; k < run; k++) matched.add((r - run + k) * SIZE + c);
+        if (r < SIZE && typeAt(r, c) !== -1 && typeAt(r, c) === typeAt(r - 1, c)) run++;
+        else {
+          if (run >= 3) runs.push({ cells: range(r - run, r).map((rr) => [rr, c]), horizontal: false });
           run = 1;
         }
       }
+    }
+    return runs;
+  }
+
+  function range(a, b) {
+    const out = [];
+    for (let i = a; i < b; i++) out.push(i);
+    return out;
+  }
+
+  function findMatches() {
+    const matched = new Set();
+    for (const run of findRuns()) {
+      for (const [r, c] of run.cells) matched.add(r * SIZE + c);
     }
     return matched;
   }
@@ -166,19 +191,6 @@
     return options[Math.floor(Math.random() * options.length)];
   }
 
-  function makeTile(r, c, type) {
-    const el = document.createElement("div");
-    el.className = "tile";
-    el.style.background = COLORS[type];
-    el.innerHTML = `<span>${TYPES[type]}</span>`;
-    el.dataset.r = r;
-    el.dataset.c = c;
-    boardEl.appendChild(el);
-    tiles[r][c] = el;
-    place(el, r, c, true);
-    return el;
-  }
-
   function place(el, r, c, instant) {
     if (instant) el.style.transition = "none";
     el.style.transform = `translate(calc(${c} * 100% + ${c} * var(--gap)), calc(${r} * 100% + ${r} * var(--gap)))`;
@@ -190,9 +202,37 @@
     el.dataset.c = c;
   }
 
+  function makeTile(r, c, type, spec) {
+    const el = document.createElement("div");
+    el.className = "tile" + (spec ? " special" : "");
+    el.style.background = COLORS[type];
+    el.innerHTML = `<span>${spec === SPECIAL_BOMB ? "💣" : TYPES[type]}</span>`;
+    el.dataset.r = r;
+    el.dataset.c = c;
+    boardEl.appendChild(el);
+    tiles[r][c] = el;
+    place(el, r, c, true);
+    return el;
+  }
+
+  function spawnTile(r, c, type, spec, fromRow) {
+    const el = makeTile(fromRow !== undefined ? fromRow : r, c, type, spec);
+    if (fromRow !== undefined) {
+      el.style.transition = "none";
+      const fr = fromRow;
+      el.style.transform = `translate(calc(${c} * 100% + ${c} * var(--gap)), calc(${fr} * 100% + ${fr} * var(--gap)))`;
+      void el.offsetWidth;
+      el.style.transition = "";
+    }
+    place(el, r, c);
+    return el;
+  }
+
   function newBoard() {
+    boardEl.querySelectorAll(".score-popup").forEach((el) => el.remove());
     boardEl.innerHTML = "";
     grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(-1));
+    special = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
     tiles = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
     do {
       for (let r = 0; r < SIZE; r++) {
@@ -210,7 +250,7 @@
     } while (!hasPossibleMove());
     for (let r = 0; r < SIZE; r++) {
       for (let c = 0; c < SIZE; c++) {
-        makeTile(r, c, grid[r][c]);
+        makeTile(r, c, grid[r][c], null);
       }
     }
   }
@@ -218,11 +258,25 @@
   function updateHud() {
     scoreEl.textContent = score;
     movesEl.textContent = moves;
+    levelEl.textContent = level;
     bestEl.textContent = best;
   }
 
   function setMessage(text) {
     messageEl.textContent = text;
+  }
+
+  function popup(r, c, text) {
+    const el = document.createElement("div");
+    el.className = "score-popup";
+    el.textContent = text;
+    const rect = boardEl.getBoundingClientRect();
+    const inner = rect.width - 12;
+    const tile = (inner - 7 * 4) / 8;
+    el.style.left = `${6 + c * (tile + 4) + tile / 2}px`;
+    el.style.top = `${6 + r * (tile + 4) + tile / 2}px`;
+    boardEl.appendChild(el);
+    setTimeout(() => el.remove(), 900);
   }
 
   function scheduleHint() {
@@ -257,18 +311,25 @@
     clearHints();
 
     [grid[r1][c1], grid[r2][c2]] = [grid[r2][c2], grid[r1][c1]];
+    [special[r1][c1], special[r2][c2]] = [special[r2][c2], special[r1][c1]];
     [tiles[r1][c1], tiles[r2][c2]] = [tiles[r2][c2], tiles[r1][c1]];
+    refreshTileFace(r1, c1);
+    refreshTileFace(r2, c2);
     place(tiles[r1][c1], r1, c1);
     place(tiles[r2][c2], r2, c2);
     sfx.swap();
     await sleep(SWAP_MS);
 
-    if (findMatches().size === 0) {
-      sfx.invalid();
+    const runs = findRuns();
+    if (runs.length === 0) {
       [grid[r1][c1], grid[r2][c2]] = [grid[r2][c2], grid[r1][c1]];
+      [special[r1][c1], special[r2][c2]] = [special[r2][c2], special[r1][c1]];
       [tiles[r1][c1], tiles[r2][c2]] = [tiles[r2][c2], tiles[r1][c1]];
+      refreshTileFace(r1, c1);
+      refreshTileFace(r2, c2);
       place(tiles[r1][c1], r1, c1);
       place(tiles[r2][c2], r2, c2);
+      sfx.invalid();
       await sleep(SWAP_MS);
       busy = false;
       scheduleHint();
@@ -277,8 +338,17 @@
 
     moves--;
     updateHud();
-    await resolveBoard();
+    await resolveBoard(runs, [[r1, c1], [r2, c2]]);
     busy = false;
+
+    const newLevel = Math.floor(score / LEVEL_STEP) + 1;
+    if (newLevel > level) {
+      level = newLevel;
+      moves += LEVEL_BONUS_MOVES;
+      setMessage(`Level ${level}! +${LEVEL_BONUS_MOVES} moves`);
+      sfx.levelUp();
+      updateHud();
+    }
 
     if (moves <= 0) {
       gameOver = true;
@@ -296,23 +366,95 @@
     scheduleHint();
   }
 
-  async function resolveBoard() {
+  function refreshTileFace(r, c) {
+    const el = tiles[r][c];
+    if (!el) return;
+    el.classList.toggle("special", !!special[r][c]);
+    el.innerHTML = `<span>${special[r][c] === SPECIAL_BOMB ? "💣" : TYPES[grid[r][c]]}</span>`;
+  }
+
+  function collectRunSets(runs) {
+    const matched = new Set();
+    const createdSpecials = [];
+    for (const run of runs) {
+      for (const [r, c] of run.cells) matched.add(r * SIZE + c);
+      if (run.cells.length >= 5) {
+        createdSpecials.push({ at: run.cells[2], kind: SPECIAL_BOMB });
+      } else if (run.cells.length === 4) {
+        const horizontal = run.horizontal;
+        const anchor = run.cells[0];
+        createdSpecials.push({ at: horizontal ? anchor : run.cells[1], kind: SPECIAL_LINE, dir: horizontal ? "row" : "col" });
+      }
+    }
+    return { matched, createdSpecials };
+  }
+
+  function expandSpecials() {
+    const doomed = new Set();
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        const s = special[r][c];
+        if (!s) continue;
+        if (s === SPECIAL_BOMB) {
+          const type = grid[r][c];
+          for (let rr = 0; rr < SIZE; rr++) {
+            for (let cc = 0; cc < SIZE; cc++) {
+              if (grid[rr][cc] === type) doomed.add(rr * SIZE + cc);
+            }
+          }
+        } else if (s.kind === SPECIAL_LINE) {
+          if (s.dir === "row") {
+            for (let cc = 0; cc < SIZE; cc++) doomed.add(r * SIZE + cc);
+          } else {
+            for (let rr = 0; rr < SIZE; rr++) doomed.add(rr * SIZE + c);
+          }
+        }
+      }
+    }
+    return doomed;
+  }
+
+  async function resolveBoard(initialRuns, swappedCells) {
     let combo = 0;
     let lastCount = 0;
-    while (true) {
-      const matched = findMatches();
-      if (matched.size === 0) break;
+    let runs = initialRuns;
+    while (runs.length > 0) {
+      const { matched, createdSpecials } = collectRunSets(runs);
       combo++;
       lastCount = matched.size;
-      score += matched.size * 10 * combo;
+
+      const activated = [];
+      for (const [r, c] of swappedCells || []) {
+        const s = special[r][c];
+        if (s && !activated.includes(r * SIZE + c)) activated.push(r * SIZE + c);
+      }
+      const blasted = expandSpecials();
+      for (const idx of blasted) matched.add(idx);
+
+      for (const cs of createdSpecials) {
+        const [r, c] = cs.at;
+        if (grid[r][c] !== -1) {
+          special[r][c] = cs.kind === SPECIAL_BOMB ? SPECIAL_BOMB : { kind: SPECIAL_LINE, dir: cs.dir };
+          refreshTileFace(r, c);
+          popup(r, c, cs.kind === SPECIAL_BOMB ? "💣 Bomb!" : "⚡ Line!");
+        }
+      }
+
+      const gained = matched.size * 10 * combo;
+      score += gained;
+      const midR = Math.floor(SIZE / 2);
+      const midC = Math.floor(SIZE / 2);
+      popup(midR, midC, `+${gained}`);
       updateHud();
-      sfx.match(combo);
+      if (blasted.size > 0) sfx.special();
+      else sfx.match(combo);
+
       matched.forEach((idx) => {
         const r = Math.floor(idx / SIZE);
         const c = idx % SIZE;
         if (tiles[r][c]) tiles[r][c].classList.add("matched");
       });
-      await sleep(POP_MS);
+      await sleep(blasted.size > 0 ? BLAST_MS : POP_MS);
       matched.forEach((idx) => {
         const r = Math.floor(idx / SIZE);
         const c = idx % SIZE;
@@ -320,13 +462,17 @@
           tiles[r][c].remove();
           tiles[r][c] = null;
           grid[r][c] = -1;
+          special[r][c] = null;
         }
       });
       collapseAndRefill();
       sfx.fall();
       await sleep(FALL_MS);
+      runs = findRuns();
+      swappedCells = null;
     }
     if (combo > 1) setMessage(`Combo x${combo}! Last match: ${lastCount} gems`);
+    else setMessage("");
   }
 
   function collapseAndRefill() {
@@ -336,9 +482,12 @@
         if (grid[r][c] !== -1) {
           if (write !== r) {
             grid[write][c] = grid[r][c];
+            special[write][c] = special[r][c];
+            special[r][c] = null;
             grid[r][c] = -1;
             tiles[write][c] = tiles[r][c];
             tiles[r][c] = null;
+            refreshTileFace(write, c);
             place(tiles[write][c], write, c);
           }
           write--;
@@ -347,12 +496,8 @@
       for (let r = write; r >= 0; r--) {
         const t = randType();
         grid[r][c] = t;
-        const el = makeTile(r, c, t);
-        el.style.transition = "none";
-        el.style.transform = `translate(calc(${c} * 100% + ${c} * var(--gap)), calc(${-1 - (write - r)} * 100% + ${-1 - (write - r)} * var(--gap)))`;
-        void el.offsetWidth;
-        el.style.transition = "";
-        place(el, r, c);
+        special[r][c] = null;
+        spawnTile(r, c, t, null, -1 - (write - r));
       }
     }
   }
@@ -360,7 +505,11 @@
   async function reshuffle() {
     busy = true;
     const flat = [];
-    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) flat.push(grid[r][c]);
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        flat.push({ t: grid[r][c], s: special[r][c] });
+      }
+    }
     let attempts = 0;
     do {
       for (let i = flat.length - 1; i > 0; i--) {
@@ -368,13 +517,19 @@
         [flat[i], flat[j]] = [flat[j], flat[i]];
       }
       let k = 0;
-      for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) grid[r][c] = flat[k++];
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          grid[r][c] = flat[k].t;
+          special[r][c] = flat[k].s;
+          k++;
+        }
+      }
       attempts++;
     } while ((findMatches().size > 0 || !hasPossibleMove()) && attempts < 200);
     for (let r = 0; r < SIZE; r++) {
       for (let c = 0; c < SIZE; c++) {
         if (tiles[r][c]) tiles[r][c].remove();
-        makeTile(r, c, grid[r][c]);
+        makeTile(r, c, grid[r][c], special[r][c]);
       }
     }
     await sleep(FALL_MS);
@@ -455,6 +610,7 @@
     sfx.newGame();
     score = 0;
     moves = START_MOVES;
+    level = 1;
     gameOver = false;
     busy = false;
     selected = null;
