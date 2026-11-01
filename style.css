@@ -48,6 +48,9 @@ h1 {
   font-size: 1.8rem;
   letter-spacing: 6px;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   background: linear-gradient(90deg, #ffd76a, #ff7ad9, #7ab8ff, #ffd76a);
   background-size: 200% auto;
   -webkit-background-clip: text;
@@ -55,6 +58,19 @@ h1 {
   color: transparent;
   animation: shine 4s linear infinite;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+}
+
+.logo-gem {
+  width: 1.7em;
+  height: 1.7em;
+  flex: none;
+  filter: drop-shadow(0 2px 5px rgba(79, 195, 247, 0.55));
+  animation: bob 3s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-3px) rotate(4deg); }
 }
 
 @keyframes shine {
