@@ -3,6 +3,7 @@ export const TYPE_COUNT = 6;
 export const START_MOVES = 25;
 export const LEVEL_STEP = 600;
 export const LEVEL_BONUS_MOVES = 4;
+export const SCORE_PER_GEM = 10;
 
 export const SPECIAL_BOMB = "bomb";
 
@@ -191,22 +192,23 @@ function deal(state) {
   } while (!hasPossibleMove(state.grid) && attempts < 50);
 }
 
-export function trySwap(state, r1, c1, r2, c2) {
-  if (state.over) return { accepted: false };
-  if (r1 < 0 || r1 >= SIZE || c1 < 0 || c1 >= SIZE || r2 < 0 || r2 >= SIZE || c2 < 0 || c2 >= SIZE) {
-    return { accepted: false };
-  }
-  if (Math.abs(r1 - r2) + Math.abs(c1 - c2) !== 1) return { accepted: false };
+export function isAdjacent(r1, c1, r2, c2) {
+  return (
+    r1 >= 0 && r1 < SIZE && c1 >= 0 && c1 < SIZE &&
+    r2 >= 0 && r2 < SIZE && c2 >= 0 && c2 < SIZE &&
+    Math.abs(r1 - r2) + Math.abs(c1 - c2) === 1
+  );
+}
 
+export function isValidSwap(state, r1, c1, r2, c2) {
+  if (state.over || !isAdjacent(r1, c1, r2, c2)) return false;
+  return createsMatch(state.grid, r1, c1, r2, c2);
+}
+
+export function trySwap(state, r1, c1, r2, c2) {
+  if (!isValidSwap(state, r1, c1, r2, c2)) return { accepted: false };
   [state.grid[r1][c1], state.grid[r2][c2]] = [state.grid[r2][c2], state.grid[r1][c1]];
   [state.special[r1][c1], state.special[r2][c2]] = [state.special[r2][c2], state.special[r1][c1]];
-
-  if (findMatches(state.grid).size === 0) {
-    [state.grid[r1][c1], state.grid[r2][c2]] = [state.grid[r2][c2], state.grid[r1][c1]];
-    [state.special[r1][c1], state.special[r2][c2]] = [state.special[r2][c2], state.special[r1][c1]];
-    return { accepted: false };
-  }
-
   state.moves--;
   state._combo = 0;
   state._seeds = [[r1, c1], [r2, c2]];
@@ -240,7 +242,7 @@ export function resolveStep(state) {
     }
   }
 
-  const gained = matched.size * 10 * state._combo;
+  const gained = matched.size * SCORE_PER_GEM * state._combo;
   state.score += gained;
 
   const popped = [...matched];
