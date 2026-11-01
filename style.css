@@ -138,6 +138,10 @@ h1 {
   will-change: transform;
 }
 
+.tile {
+  position: relative;
+}
+
 .tile span {
   display: block;
   transition: transform 0.15s ease, opacity 0.2s ease;
@@ -168,11 +172,36 @@ h1 {
 }
 
 .tile.special {
-  box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.55);
+  animation: specialGlow 1s ease-in-out infinite;
 }
 
 .tile.special span {
-  animation: pulse 1.1s ease-in-out infinite;
+  animation: none;
+}
+
+.tile.special::after {
+  content: attr(data-glyph);
+  position: absolute;
+  right: 3px;
+  bottom: 1px;
+  font-size: 0.65em;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+}
+
+.tile.special-bomb {
+  animation: bombGlow 0.8s ease-in-out infinite;
+}
+
+@keyframes specialGlow {
+  0%, 100% { box-shadow: 0 0 5px 1px rgba(255, 215, 106, 0.55); }
+  50% { box-shadow: 0 0 16px 5px rgba(255, 215, 106, 0.95); }
+}
+
+@keyframes bombGlow {
+  0%, 100% { box-shadow: 0 0 6px 2px rgba(255, 82, 82, 0.6); }
+  50% { box-shadow: 0 0 18px 6px rgba(255, 82, 82, 1); }
 }
 
 .score-popup {

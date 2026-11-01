@@ -121,8 +121,10 @@ import {
 
   function createTileEl(type, spec) {
     const el = document.createElement("div");
-    el.className = "tile" + (spec ? " special" : "");
+    el.className = "tile" + (spec ? " special" + (spec === SPECIAL_BOMB ? " special-bomb" : "") : "");
     el.style.background = COLORS[type];
+    const glyph = spec === SPECIAL_BOMB ? "" : spec && spec.kind === "line" ? (spec.dir === "row" ? "↔" : "↕") : "";
+    if (glyph) el.dataset.glyph = glyph;
     el.innerHTML = `<span>${spec === SPECIAL_BOMB ? "💣" : TYPES[type]}</span>`;
     boardEl.appendChild(el);
     return el;
@@ -150,8 +152,13 @@ import {
   function refreshTileFace(r, c) {
     const el = tiles[r][c];
     if (!el) return;
-    el.classList.toggle("special", !!state.special[r][c]);
-    el.innerHTML = `<span>${state.special[r][c] === SPECIAL_BOMB ? "💣" : TYPES[state.grid[r][c]]}</span>`;
+    const spec = state.special[r][c];
+    el.classList.toggle("special", !!spec);
+    el.classList.toggle("special-bomb", spec === SPECIAL_BOMB);
+    const glyph = spec === SPECIAL_BOMB ? "" : spec && spec.kind === "line" ? (spec.dir === "row" ? "↔" : "↕") : "";
+    if (glyph) el.dataset.glyph = glyph;
+    else delete el.dataset.glyph;
+    el.innerHTML = `<span>${spec === SPECIAL_BOMB ? "💣" : TYPES[state.grid[r][c]]}</span>`;
   }
 
   function renderBoard() {
