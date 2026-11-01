@@ -202,6 +202,15 @@ import {
       toggle() {
         muted = !muted;
         localStorage.setItem("gems-muted", muted ? "1" : "0");
+        try {
+          const ac = ensure();
+          if (ac && master) {
+            const t = ac.currentTime;
+            master.gain.cancelScheduledValues(t);
+            master.gain.setValueAtTime(master.gain.value, t);
+            master.gain.linearRampToValueAtTime(muted ? 0.0001 : 0.9, t + 0.08);
+          }
+        } catch { /* ignore */ }
         if (muted) bgm.stop();
         else bgm.start();
         return muted;
