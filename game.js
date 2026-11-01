@@ -23,6 +23,9 @@ import { N as NOTE, themeForLevel } from "./themes.js";
   const restartBtn = document.getElementById("restart");
   const soundBtn = document.getElementById("sound");
 
+  let state = createState();
+  let theme = themeForLevel(1);
+
   const sfx = (() => {
     let ctx = null;
     let master = null;
@@ -308,6 +311,7 @@ import { N as NOTE, themeForLevel } from "./themes.js";
     };
 
     return {
+      setTheme(t) { bgm.setTheme(t); },
       unlock() {
         const ac = ensure();
         if (ac && !chirped) {
@@ -375,8 +379,6 @@ import { N as NOTE, themeForLevel } from "./themes.js";
     window.addEventListener(evt, () => sfx.unlock(), { passive: true })
   );
 
-  let state = createState();
-  let theme = themeForLevel(1);
   let tiles = [];
   let best = Number(localStorage.getItem("gems-best") || 0);
   let busy = false;
