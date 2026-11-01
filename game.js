@@ -107,7 +107,7 @@
 
   function place(el, r, c, instant) {
     if (instant) el.style.transition = "none";
-    el.style.transform = `translate(${c * 100}%, ${r * 100}%)`;
+    el.style.transform = `translate(calc(${c} * 100% + ${c} * var(--gap)), calc(${r} * 100% + ${r} * var(--gap)))`;
     if (instant) {
       void el.offsetWidth;
       el.style.transition = "";
@@ -268,7 +268,11 @@
       for (let r = write; r >= 0; r--) {
         const t = randType();
         grid[r][c] = t;
-        const el = makeTile(-1 - (write - r), c, t);
+        const el = makeTile(r, c, t);
+        el.style.transition = "none";
+        el.style.transform = `translate(calc(${c} * 100% + ${c} * var(--gap)), calc(${-1 - (write - r)} * 100% + ${-1 - (write - r)} * var(--gap)))`;
+        void el.offsetWidth;
+        el.style.transition = "";
         place(el, r, c);
       }
     }
