@@ -26,6 +26,7 @@ import {
 
   const sfx = (() => {
     let ctx = null;
+    let master = null;
     let muted = localStorage.getItem("gems-muted") === "1";
     let chirped = false;
 
@@ -33,7 +34,21 @@ import {
       if (!ctx) {
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return null;
-        try { ctx = new AC(); } catch { return null; }
+        try {
+          ctx = new AC();
+          master = ctx.createGain();
+          master.gain.value = 0.9;
+          if (ctx.createDynamicsCompressor) {
+            const comp = ctx.createDynamicsCompressor();
+            comp.threshold.value = -18;
+            comp.knee.value = 20;
+            comp.ratio.value = 8;
+            master.connect(comp);
+            comp.connect(ctx.destination);
+          } else {
+            master.connect(ctx.destination);
+          }
+        } catch { return null; }
       }
       if (ctx.state === "suspended") {
         try { ctx.resume(); } catch { /* retried on next gesture */ }
@@ -56,18 +71,36 @@ import {
         gain.gain.exponentialRampToValueAtTime(vol, t + 0.012);
         gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
         osc.connect(gain);
-        gain.connect(ac.destination);
+        gain.connect(master);
         osc.start(t);
         osc.stop(t + dur + 0.05);
       } catch { /* audio must never break gameplay */ }
     }
+
+    function chord(freqs, dur, type, vol, when = 0, step = 0) {
+      freqs.forEach((f, i) => tone(f, dur, type, vol, when + i * step));
+    }
+
+    function arp(root, steps, dur, type, vol, when = 0, step = 0.055, ratio = 1.335) {
+      let f = root;
+      for (let i = 0; i < steps; i++) {
+        tone(f, dur, type, vol, when + i * step);
+        f *= ratio;
+      }
+    }
+
+    const N = {
+      C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.0, A4: 440.0, B4: 493.88,
+      C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.0,
+      C6: 1046.5,
+    };
 
     return {
       unlock() {
         const ac = ensure();
         if (ac && !chirped) {
           chirped = true;
-          tone(660, 0.08, "square", 0.15, 0, 990);
+          chord([N.E5, N.G5, N.C6], 0.14, "square", 0.1, 0, 0.05);
         }
       },
       get muted() { return muted; },
@@ -76,23 +109,41 @@ import {
         localStorage.setItem("gems-muted", muted ? "1" : "0");
         return muted;
       },
-      swap() { tone(280, 0.09, "square", 0.18, 0, 520); },
-      invalid() { tone(160, 0.16, "square", 0.18, 0, 90); },
+      swap() {
+        tone(140, 0.07, "triangle", 0.22, 0, 220);
+        tone(280, 0.09, "square", 0.14, 0, 520);
+        tone(560, 0.06, "square", 0.08, 0.03, 780);
+      },
+      invalid() {
+        tone(160, 0.14, "square", 0.16, 0, 110);
+        tone(151, 0.14, "sawtooth", 0.08, 0, 104);
+      },
       match(combo) {
-        const base = 440 * Math.pow(1.25, Math.min(combo - 1, 6));
-        tone(base, 0.12, "square", 0.2, 0);
-        tone(base * 1.5, 0.14, "square", 0.15, 0.05);
+        const root = N.A4 * Math.pow(1.25, Math.min(combo - 1, 6));
+        arp(root, 3, 0.1, "square", 0.13, 0, 0.05);
+        chord([root * 1.5, root * 2], 0.12, "triangle", 0.07, 0.1);
       },
       special() {
-        tone(180, 0.3, "sawtooth", 0.2, 0, 1200);
-        tone(90, 0.35, "square", 0.16, 0.05, 600);
+        chord([N.C4, N.E4, N.G4, N.C5], 0.28, "sawtooth", 0.11, 0, 0.04);
+        tone(90, 0.4, "square", 0.18, 0.02, 720);
+        arp(N.C5, 4, 0.09, "square", 0.1, 0.12, 0.06, 1.26);
       },
-      fall() { tone(700, 0.06, "triangle", 0.1, 0, 350); },
-      levelUp() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.16, "square", 0.18, i * 0.1)); },
+      fall() {
+        tone(700, 0.05, "triangle", 0.08, 0, 420);
+        tone(520, 0.05, "triangle", 0.06, 0.04, 320);
+      },
+      levelUp() {
+        arp(N.C5, 6, 0.14, "square", 0.14, 0, 0.09, 1.26);
+        chord([N.C5, N.E5, N.G5, N.C6], 0.5, "triangle", 0.08, 0.45);
+      },
       gameOver() {
-        [523, 415, 330, 262].forEach((f, i) => tone(f, 0.22, "square", 0.16, i * 0.18));
+        [N.G4, N.E4, N.C4, N.C4].forEach((f, i) => tone(f, 0.24, "square", 0.14, i * 0.2));
+        chord([N.C4, N.E4, N.G4], 0.7, "triangle", 0.08, 0.8);
       },
-      newGame() { [262, 330, 392, 523].forEach((f, i) => tone(f, 0.12, "square", 0.16, i * 0.08)); },
+      newGame() {
+        arp(N.C4, 5, 0.11, "square", 0.13, 0, 0.08, 1.335);
+        chord([N.C5, N.E5, N.G5], 0.3, "triangle", 0.08, 0.4);
+      },
     };
   })();
 
