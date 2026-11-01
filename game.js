@@ -16,6 +16,62 @@
   const bestEl = document.getElementById("best");
   const messageEl = document.getElementById("message");
   const restartBtn = document.getElementById("restart");
+  const soundBtn = document.getElementById("sound");
+
+  const sfx = (() => {
+    let ctx = null;
+    let muted = localStorage.getItem("gems-muted") === "1";
+
+    function ensure() {
+      if (!ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ctx = new AC();
+      }
+      if (ctx.state === "suspended") ctx.resume();
+      return ctx;
+    }
+
+    function tone(freq, dur, type, vol, when, slideTo) {
+      if (muted) return;
+      const ac = ensure();
+      if (!ac) return;
+      const t = ac.currentTime + when;
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t);
+      if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      osc.connect(gain).connect(ac.destination);
+      osc.start(t);
+      osc.stop(t + dur + 0.05);
+    }
+
+    return {
+      unlock() { ensure(); },
+      get muted() { return muted; },
+      toggle() {
+        muted = !muted;
+        localStorage.setItem("gems-muted", muted ? "1" : "0");
+        return muted;
+      },
+      swap() { tone(280, 0.09, "square", 0.08, 0, 520); },
+      invalid() { tone(160, 0.16, "square", 0.08, 0, 90); },
+      match(combo) {
+        const base = 440 * Math.pow(1.25, Math.min(combo - 1, 6));
+        tone(base, 0.12, "square", 0.09, 0);
+        tone(base * 1.5, 0.14, "square", 0.07, 0.05);
+      },
+      fall() { tone(700, 0.06, "triangle", 0.05, 0, 350); },
+      gameOver() {
+        [523, 415, 330, 262].forEach((f, i) => tone(f, 0.22, "square", 0.08, i * 0.18));
+      },
+      newGame() { [262, 330, 392, 523].forEach((f, i) => tone(f, 0.12, "square", 0.08, i * 0.08)); },
+    };
+  })();
 
   let grid = [];
   let tiles = [];
@@ -188,9 +244,11 @@
     [tiles[r1][c1], tiles[r2][c2]] = [tiles[r2][c2], tiles[r1][c1]];
     place(tiles[r1][c1], r1, c1);
     place(tiles[r2][c2], r2, c2);
+    sfx.swap();
     await sleep(SWAP_MS);
 
     if (findMatches().size === 0) {
+      sfx.invalid();
       [grid[r1][c1], grid[r2][c2]] = [grid[r2][c2], grid[r1][c1]];
       [tiles[r1][c1], tiles[r2][c2]] = [tiles[r2][c2], tiles[r1][c1]];
       place(tiles[r1][c1], r1, c1);
@@ -214,6 +272,7 @@
         updateHud();
       }
       setMessage(`Game over! Final score: ${score}. Tap New Game to play again.`);
+      sfx.gameOver();
     } else if (!hasPossibleMove()) {
       setMessage("No moves left on board — reshuffling!");
       await reshuffle();
@@ -231,6 +290,7 @@
       lastCount = matched.size;
       score += matched.size * 10 * combo;
       updateHud();
+      sfx.match(combo);
       matched.forEach((idx) => {
         const r = Math.floor(idx / SIZE);
         const c = idx % SIZE;
@@ -247,6 +307,7 @@
         }
       });
       collapseAndRefill();
+      sfx.fall();
       await sleep(FALL_MS);
     }
     if (combo > 1) setMessage(`Combo x${combo}! Last match: ${lastCount} gems`);
@@ -313,6 +374,7 @@
   let pointerStart = null;
 
   boardEl.addEventListener("pointerdown", (e) => {
+    sfx.unlock();
     if (busy || gameOver) return;
     const cell = cellFromEvent(e);
     if (!cell) return;
@@ -364,7 +426,15 @@
     pointerStart = null;
   });
 
+  soundBtn.addEventListener("click", () => {
+    sfx.unlock();
+    soundBtn.textContent = sfx.toggle() ? "🔇" : "🔊";
+  });
+  soundBtn.textContent = sfx.muted ? "🔇" : "🔊";
+
   restartBtn.addEventListener("click", () => {
+    sfx.unlock();
+    sfx.newGame();
     score = 0;
     moves = START_MOVES;
     gameOver = false;
