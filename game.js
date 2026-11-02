@@ -246,11 +246,11 @@ import { createStats } from "./stats.js";
       li.innerHTML = `<span><span class="medal">${medals[i]}</span>#${i + 1}</span><span>${entry.score} <em class="moves-tag">${entry.moves} mv</em></span>`;
       top3El.appendChild(li);
     });
-    gameOverEl.classList.remove("hidden");
+    gameOverEl.hidden = false;
   }
 
   function hideGameOver() {
-    gameOverEl.classList.add("hidden");
+    gameOverEl.hidden = true;
   }
 
   function newGame() {

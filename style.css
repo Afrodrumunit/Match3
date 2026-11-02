@@ -361,7 +361,6 @@ h1 {
   animation: fadeIn 0.4s ease;
 }
 
-.gameover.hidden,
 .gameover[hidden] {
   display: none;
 }
