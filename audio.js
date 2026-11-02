@@ -7,6 +7,8 @@ export function createSfx(getTheme, getLevel = () => 1) {
   let filter = null;
   let delaySend = null;
   let noiseBuf = null;
+  let lfo = null;
+  let lfoGain = null;
   let muted = localStorage.getItem("gems-muted") === "1";
   let chirped = false;
 
@@ -47,6 +49,13 @@ export function createSfx(getTheme, getLevel = () => 1) {
         damp.connect(fb);
         fb.connect(delay);
         damp.connect(master);
+        lfo = ctx.createOscillator();
+        lfo.type = "sine";
+        lfo.frequency.value = 0.17;
+        lfoGain = ctx.createGain();
+        lfoGain.gain.value = 9;
+        lfo.connect(lfoGain);
+        lfo.start();
       } catch { return null; }
     }
     if (ctx.state === "suspended") {
@@ -96,12 +105,18 @@ export function createSfx(getTheme, getLevel = () => 1) {
       const wave = patch ? patch.wave : "sawtooth";
       const v = patch ? patch.vol : vol;
       if (patch && filter) filter.frequency.setValueAtTime(patch.cutoff, t);
-      for (const det of patch ? [0] : [-7, -2, 3, 8]) {
+      const detunes = patch ? [0] : [-7, -2, 3, 8];
+      for (const det of detunes) {
         const osc = ac.createOscillator();
         const gain = ac.createGain();
         osc.type = wave;
         osc.frequency.setValueAtTime(freq, t);
-        osc.detune.setValueAtTime(det, t);
+        if (!patch && lfo && lfoGain) {
+          osc.detune.value = det;
+          lfoGain.connect(osc.detune);
+        } else {
+          osc.detune.setValueAtTime(det, t);
+        }
         gain.gain.setValueAtTime(0.0001, t);
         gain.gain.linearRampToValueAtTime(v, t + dur * 0.45);
         gain.gain.setValueAtTime(v, t + dur * 0.65);
