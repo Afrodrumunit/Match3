@@ -345,3 +345,110 @@ h1 {
   text-align: center;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
 }
+
+.gameover {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(10, 10, 25, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: fadeIn 0.4s ease;
+}
+
+.gameover.hidden,
+.gameover[hidden] {
+  display: none;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.gameover h2 {
+  font-size: 2rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, var(--titleA), var(--titleB), var(--titleC));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.gameover .final-score {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.gameover .new-best {
+  font-weight: 800;
+  background: linear-gradient(90deg, #ffe89a, #ffd76a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: pulse 0.9s ease-in-out infinite;
+}
+
+.gameover .new-best.hidden {
+  display: none;
+}
+
+.gameover h3 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  opacity: 0.75;
+}
+
+.top3 {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+  text-align: left;
+}
+
+.top3 li {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 5px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.top3 li.current {
+  border-color: var(--progressA);
+  box-shadow: 0 0 10px var(--glow3);
+}
+
+.top3 li .medal {
+  margin-right: 8px;
+}
+
+#play-again {
+  margin-top: 6px;
+  background: linear-gradient(135deg, var(--accentA), var(--accentB));
+  border: none;
+  color: #12121f;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 12px 32px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(122, 184, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+#play-again:active {
+  transform: scale(0.94);
+}

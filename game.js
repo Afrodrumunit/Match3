@@ -5,6 +5,7 @@ import {
 import { themeForLevel } from "./themes.js";
 import { createSfx } from "./audio.js";
 import { createBoardView } from "./boardView.js";
+import { createStats } from "./stats.js";
 
 (() => {
   "use strict";
@@ -26,6 +27,13 @@ import { createBoardView } from "./boardView.js";
   const messageEl = $("message");
   const restartBtn = $("restart");
   const soundBtn = $("sound");
+  const gameOverEl = $("gameover");
+  const finalScoreEl = $("final-score");
+  const newBestEl = $("new-best");
+  const top3El = $("top3");
+  const playAgainBtn = $("play-again");
+
+  const stats = createStats(localStorage);
 
   let state = createState();
   let theme = themeForLevel(1);
@@ -140,11 +148,13 @@ import { createBoardView } from "./boardView.js";
       applyTheme(themeForLevel(state.level));
     }
     if (end.gameOver) {
-      if (state.score > best) {
+      const isNewBest = state.score > best;
+      if (isNewBest) {
         best = state.score;
         localStorage.setItem("gems-best", String(best));
       }
-      setMessage(`Game over! Final score: ${state.score}. Tap New Game to play again.`);
+      const top3 = stats.record(state.score);
+      showGameOver(state.score, top3, isNewBest);
       sfx.gameOver();
     } else if (end.needsReshuffle) {
       setMessage("No moves left on board — reshuffling!");
@@ -225,16 +235,38 @@ import { createBoardView } from "./boardView.js";
   });
   soundBtn.textContent = sfx.muted ? "🔇" : "🔊";
 
-  restartBtn.addEventListener("click", () => {
+  function showGameOver(score, top3, isNewBest) {
+    finalScoreEl.textContent = score;
+    newBestEl.classList.toggle("hidden", !isNewBest);
+    top3El.innerHTML = "";
+    const medals = ["🥇", "🥈", "🥉"];
+    top3.forEach((s, i) => {
+      const li = document.createElement("li");
+      if (s === score && i === top3.indexOf(score)) li.classList.add("current");
+      li.innerHTML = `<span><span class="medal">${medals[i]}</span>#${i + 1}</span><span>${s}</span>`;
+      top3El.appendChild(li);
+    });
+    gameOverEl.classList.remove("hidden");
+  }
+
+  function hideGameOver() {
+    gameOverEl.classList.add("hidden");
+  }
+
+  function newGame() {
     sfx.unlock();
     sfx.newGame();
     state = createState();
     selected = null;
     setMessage("");
+    hideGameOver();
     applyTheme(themeForLevel(1));
     updateHud();
     scheduleHint();
-  });
+  }
+
+  restartBtn.addEventListener("click", newGame);
+  playAgainBtn.addEventListener("click", newGame);
 
   ["pointerdown", "touchstart", "click"].forEach((evt) =>
     window.addEventListener(evt, () => sfx.unlock(), { passive: true })

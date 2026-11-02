@@ -61,6 +61,14 @@
     </header>
     <div id="board" class="board" aria-label="Match 3 board"></div>
     <p id="message" class="message"></p>
+    <div id="gameover" class="gameover hidden" hidden>
+      <h2>Game Over</h2>
+      <p class="final-score">Score: <span id="final-score">0</span></p>
+      <p id="new-best" class="new-best hidden">🏆 New best!</p>
+      <h3>Top scores</h3>
+      <ol id="top3" class="top3"></ol>
+      <button id="play-again" type="button">Play again</button>
+    </div>
   </main>
   <script type="module" src="game.js"></script>
 </body>

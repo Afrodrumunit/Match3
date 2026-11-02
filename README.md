@@ -16,7 +16,7 @@ or any static file server.
 - **25 moves** per game. Every **600 points** = level up: **+4 moves** and a
   new **theme** (visuals + music) every 2 levels
 - Idle 6s → a hint pulses on a valid move. New Game resets everything
-- Best score and mute preference persist in `localStorage`
+- Best score, **top-3 scores** (shown on the game-over screen) and mute preference persist in `localStorage`
 
 ## Run locally
 
@@ -40,6 +40,7 @@ python3 -m http.server 8000
 | `themes.js` | Pure data: 4 themes (emojis, colors, CSS vars, BGM note loops) rotating every 2 levels |
 | `harmony.js` | Pure music theory helpers: chord/bass/pattern lookup per bar, chord-tone quantization so SFX harmonize with the BGM |
 | `index.html` / `style.css` | Shell + styling; colors driven by CSS custom properties so themes cross-fade |
+| `stats.js` | Top-3 score persistence in localStorage (storage injected for tests) |
 | `test/` | Node test suites + balance simulation (no framework needed) |
 
 ## Tests
@@ -48,6 +49,7 @@ python3 -m http.server 8000
 node test/engine.test.mjs    # 19 tests: matches, specials, refill integrity, levels
 node test/theme.test.mjs     # 6 tests: theme data integrity and rotation
 node test/harmony.test.mjs   # 7 tests: chord lookup, quantization, arp patterns
+node test/stats.test.mjs     # 7 tests: top-3 persistence, sorting, corrupt-data recovery
 node test/balance_study.mjs  # Monte Carlo: 300 games/policy, EV and game-length stats
 ```
 
