@@ -153,7 +153,7 @@ import { createStats } from "./stats.js";
         best = state.score;
         localStorage.setItem("gems-best", String(best));
       }
-      const top3 = stats.record(state.score);
+      const top3 = stats.record(state.score, state.movesUsed);
       showGameOver(state.score, top3, isNewBest);
       sfx.gameOver();
     } else if (end.needsReshuffle) {
@@ -240,10 +240,10 @@ import { createStats } from "./stats.js";
     newBestEl.classList.toggle("hidden", !isNewBest);
     top3El.innerHTML = "";
     const medals = ["🥇", "🥈", "🥉"];
-    top3.forEach((s, i) => {
+    top3.forEach((entry, i) => {
       const li = document.createElement("li");
-      if (s === score && i === top3.indexOf(score)) li.classList.add("current");
-      li.innerHTML = `<span><span class="medal">${medals[i]}</span>#${i + 1}</span><span>${s}</span>`;
+      if (entry.score === score) li.classList.add("current");
+      li.innerHTML = `<span><span class="medal">${medals[i]}</span>#${i + 1}</span><span>${entry.score} <em class="moves-tag">${entry.moves} mv</em></span>`;
       top3El.appendChild(li);
     });
     gameOverEl.classList.remove("hidden");

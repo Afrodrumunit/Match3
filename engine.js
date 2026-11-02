@@ -160,6 +160,7 @@ export function createState(rng = Math.random) {
     special: [],
     score: 0,
     moves: START_MOVES,
+    movesUsed: 0,
     level: 1,
     over: false,
     rng,
@@ -210,6 +211,7 @@ export function trySwap(state, r1, c1, r2, c2) {
   [state.grid[r1][c1], state.grid[r2][c2]] = [state.grid[r2][c2], state.grid[r1][c1]];
   [state.special[r1][c1], state.special[r2][c2]] = [state.special[r2][c2], state.special[r1][c1]];
   state.moves--;
+  state.movesUsed++;
   state._combo = 0;
   state._seeds = [[r1, c1], [r2, c2]];
   return { accepted: true };

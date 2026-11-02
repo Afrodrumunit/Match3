@@ -16,7 +16,7 @@ or any static file server.
 - **25 moves** per game. Every **600 points** = level up: **+4 moves** and a
   new **theme** (visuals + music) every 2 levels
 - Idle 6s → a hint pulses on a valid move. New Game resets everything
-- Best score, **top-3 scores** (shown on the game-over screen) and mute preference persist in `localStorage`
+- Best score, **top-3 scores with moves used** (shown on the game-over screen) and mute preference persist in `localStorage`
 
 ## Run locally
 
