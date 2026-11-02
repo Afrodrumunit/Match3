@@ -1,7 +1,7 @@
 import { N } from "./themes.js";
-import { chordAt, bassAt, bassLine, patternAt, chordTones, quantizeToChord, drumHits, polyHits, percHits, bassPatch } from "./harmony.js";
+import { chordAt, bassAt, bassLine, patternAt, chordTones, quantizeToChord, drumHits, polyHits, percHits, bassPatchForLevel } from "./harmony.js";
 
-export function createSfx(getTheme) {
+export function createSfx(getTheme, getLevel = () => 1) {
   let ctx = null;
   let master = null;
   let filter = null;

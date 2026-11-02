@@ -1,4 +1,4 @@
-import { N, DEFAULT_BASS_PATCH } from "./themes.js";
+import { N, DEFAULT_BASS_PATCH, bassPatchForLevel } from "./themes.js";
 
 export function chordAt(theme, barIndex) {
   const chords = theme.bgm.chords;
@@ -117,6 +117,8 @@ export function percHits(theme, barIndex, barSec) {
 export function bassPatch(theme) {
   return theme.bgm.bassPatch || DEFAULT_BASS_PATCH;
 }
+
+export { bassPatchForLevel };
 
 export function arpNotes(theme, barIndex, steps, octave = 2) {
   const tones = chordTones(theme, barIndex);

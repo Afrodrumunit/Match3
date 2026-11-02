@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { THEMES, N, themeForLevel } from "/workspace/themes.js";
+import { THEMES, N, DEFAULT_BASS_PATCH, ALL_BASS_PATCHES, themeForLevel, bassPatchForLevel } from "../themes.js";
 
 let pass = 0;
 const t = (name, fn) => { try { fn(); pass++; console.log("PASS", name); } catch (e) { console.log("FAIL", name, "-", e.message); process.exitCode = 1; } };
@@ -37,5 +37,23 @@ t("themes are musically distinct (different keys/tempos)", () => {
   assert.ok(new Set(bars).size === bars.length, "tempos should differ");
   const roots = THEMES.map((t) => t.bgm.chords[0][0]);
   assert.ok(new Set(roots).size >= 3, "keys should differ");
+});
+t("patch pool = theme count + 1, all distinct", () => {
+  assert.equal(ALL_BASS_PATCHES.length, THEMES.length + 1);
+  const sigs = new Set(ALL_BASS_PATCHES.map((p) => p.wave + "@" + p.cutoff));
+  assert.equal(sigs.size, ALL_BASS_PATCHES.length);
+  assert.ok(ALL_BASS_PATCHES.includes(DEFAULT_BASS_PATCH));
+});
+t("theme+patch pair repeats only every lcm(4,5)=20 levels (on theme change)", () => {
+  const pairs = new Set();
+  for (let level = 1; level <= 40; level++) {
+    const theme = themeForLevel(level);
+    if (level > 1 && themeForLevel(level - 1).name === theme.name) continue; // same theme, no new pair
+    const key = theme.name + "|" + JSON.stringify(bassPatchForLevel(level));
+    assert.ok(!pairs.has(key), "pair repeats at level " + level + ": " + key);
+    pairs.add(key);
+  }
+  assert.equal(pairs.size, 20);
+  assert.deepEqual(bassPatchForLevel(41), bassPatchForLevel(1));
 });
 console.log(`\n${pass} tests passed${process.exitCode ? " (with failures)" : ""}`);

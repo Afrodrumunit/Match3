@@ -43,7 +43,7 @@ import { createStats } from "./stats.js";
   let hintTimer = null;
   let pointerStart = null;
 
-  const sfx = createSfx(() => theme);
+  const sfx = createSfx(() => theme, () => state.level);
   const view = createBoardView(boardEl, () => theme, () => state);
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -63,7 +63,7 @@ import { createStats } from "./stats.js";
   function applyTheme(t) {
     theme = t;
     for (const [k, v] of Object.entries(t.css)) document.documentElement.style.setProperty(k, v);
-    sfx.setTheme(t);
+    sfx.setTheme(t, state.level);
     view.renderBoard();
   }
 
@@ -260,7 +260,7 @@ import { createStats } from "./stats.js";
     selected = null;
     setMessage("");
     hideGameOver();
-    applyTheme(themeForLevel(1));
+    applyTheme(themeForLevel(state.level));
     updateHud();
     scheduleHint();
   }

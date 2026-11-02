@@ -187,3 +187,9 @@ export const THEMES = [
 export function themeForLevel(level) {
   return THEMES[Math.floor((level - 1) / 2) % THEMES.length];
 }
+
+export const ALL_BASS_PATCHES = [DEFAULT_BASS_PATCH, ...THEMES.map((t) => t.bgm.bassPatch)];
+
+export function bassPatchForLevel(level) {
+  return ALL_BASS_PATCHES[Math.floor((level - 1) / 2) % ALL_BASS_PATCHES.length];
+}
