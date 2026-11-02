@@ -1,4 +1,5 @@
 import { N } from "./themes.js";
+import { chordAt, bassAt, patternAt, chordTones, quantizeToChord } from "./harmony.js";
 
 export function createSfx(getTheme) {
   let ctx = null;
@@ -242,32 +243,34 @@ export function createSfx(getTheme) {
         clearInterval(this.timer);
         this.timer = null;
       },
+      currentBar: 0,
       schedule() {
         try {
           const ac = ensure();
           if (!ac || muted) return;
+          const theme = getTheme();
           const ahead = ac.currentTime + 1.0;
           while (this.nextBar < ahead) {
             const t = this.nextBar;
-            const chords = cfg.chords.map((names) => names.map((n) => N[n]));
-            const bar = this.barIndex % chords.length;
-            const chordNotes = chords[bar];
-            const pattern = cfg.patterns[bar % cfg.patterns.length];
             const barSec = cfg.barSec;
+            const chordNotes = chordAt(theme, this.barIndex);
+            const pattern = patternAt(theme, this.barIndex);
             chordNotes.forEach((f) => pad(f, t, barSec * 1.15, 0.02));
+            pad(bassAt(theme, this.barIndex), t, barSec * 1.1, 0.035);
             if (filter) {
-              const sweep = cfg.filterBase + 420 * (0.5 + 0.5 * Math.sin((bar / chords.length) * Math.PI * 6));
+              const sweep = cfg.filterBase + 420 * (0.5 + 0.5 * Math.sin((this.barIndex / theme.bgm.chords.length) * Math.PI * 6));
               filter.frequency.setValueAtTime(sweep, t);
             }
             const sixteenths = barSec / 4;
             for (let i = 0; i < 6; i++) {
-              const idx = pattern[i] % chordNotes.length;
+              const idx = pattern[i % pattern.length] % chordNotes.length;
               pluck(chordNotes[idx] * 2, t + i * sixteenths * 0.5, i % 2 === 0 ? 0.04 : 0.025);
             }
-            if (bar % 2 === 0) kick(t, 0.16);
+            if (this.barIndex % 2 === 0) kick(t, 0.16);
             snare(t + sixteenths * 2, 0.07);
-            if (bar % 4 === 3) kick(t + sixteenths * 3, 0.1);
+            if (this.barIndex % 4 === 3) kick(t + sixteenths * 3, 0.1);
             if (Math.random() < 0.6) crackle(t + Math.random() * barSec);
+            this.currentBar = this.barIndex;
             this.nextBar += barSec;
             this.barIndex++;
           }
@@ -315,22 +318,27 @@ export function createSfx(getTheme) {
       tone(151, 0.14, "sawtooth", 0.08, 0, 104);
     },
     match(combo) {
-      const root = N.A4 * Math.pow(1.25, Math.min(combo - 1, 6));
+      const tones = chordTones(getTheme(), bgm.currentBar || 0);
+      const root = quantizeToChord(N.A4 * Math.pow(1.25, Math.min(combo - 1, 6)), tones, 1);
       arp(root, 3, 0.1, "square", 0.13, 0, 0.05);
-      chord([root * 1.5, root * 2], 0.12, "triangle", 0.07, 0.1);
+      chord([quantizeToChord(root * 1.5, tones, 1), quantizeToChord(root * 2, tones, 1)], 0.12, "triangle", 0.07, 0.1);
     },
     special() {
-      chord([N.C4, N.E4, N.G4, N.C5], 0.28, "sawtooth", 0.11, 0, 0.04);
+      const tones = chordTones(getTheme(), bgm.currentBar || 0);
+      const root = quantizeToChord(N.C4, tones, 1);
+      chord([root, quantizeToChord(root * 1.25, tones, 1), quantizeToChord(root * 1.5, tones, 1), quantizeToChord(root * 2, tones, 1)], 0.28, "sawtooth", 0.11, 0, 0.04);
       tone(90, 0.4, "square", 0.18, 0.02, 720);
-      arp(N.C5, 4, 0.09, "square", 0.1, 0.12, 0.06, 1.26);
+      arp(quantizeToChord(N.C5, tones, 1), 4, 0.09, "square", 0.1, 0.12, 0.06, 1.26);
     },
     fall() {
       tone(700, 0.05, "triangle", 0.08, 0, 420);
       tone(520, 0.05, "triangle", 0.06, 0.04, 320);
     },
     levelUp() {
-      arp(N.C5, 6, 0.14, "square", 0.14, 0, 0.09, 1.26);
-      chord([N.C5, N.E5, N.G5, N.C6], 0.5, "triangle", 0.08, 0.45);
+      const tones = chordTones(getTheme(), bgm.currentBar || 0);
+      const root = quantizeToChord(N.C5, tones, 1);
+      arp(root, 6, 0.14, "square", 0.14, 0, 0.09, 1.26);
+      chord([root, quantizeToChord(root * 1.25, tones, 1), quantizeToChord(root * 1.5, tones, 1), quantizeToChord(root * 2, tones, 1)], 0.5, "triangle", 0.08, 0.45);
     },
     gameOver() {
       [N.G4, N.E4, N.C4, N.C4].forEach((f, i) => tone(f, 0.24, "square", 0.14, i * 0.2));

@@ -38,6 +38,7 @@ python3 -m http.server 8000
 | `boardView.js` | All board DOM: tile placement/animation, popups, hints |
 | `audio.js` | Web Audio synth: polyphonic SFX + generative ambient BGM (Boards of Canada-style tape pads, dusty kit, vinyl crackle), per-theme progressions |
 | `themes.js` | Pure data: 4 themes (emojis, colors, CSS vars, BGM note loops) rotating every 2 levels |
+| `harmony.js` | Pure music theory helpers: chord/bass/pattern lookup per bar, chord-tone quantization so SFX harmonize with the BGM |
 | `index.html` / `style.css` | Shell + styling; colors driven by CSS custom properties so themes cross-fade |
 | `test/` | Node test suites + balance simulation (no framework needed) |
 
@@ -46,6 +47,7 @@ python3 -m http.server 8000
 ```sh
 node test/engine.test.mjs    # 19 tests: matches, specials, refill integrity, levels
 node test/theme.test.mjs     # 6 tests: theme data integrity and rotation
+node test/harmony.test.mjs   # 7 tests: chord lookup, quantization, arp patterns
 node test/balance_study.mjs  # Monte Carlo: 300 games/policy, EV and game-length stats
 ```
 
