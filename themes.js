@@ -25,6 +25,10 @@ export const THEMES = [
     bgm: {
       barSec: 3.6,
       bass: [[[0, 2, 0], [2, 2, 2]], [[0, 4, 4]]], // Azure: half note root->fifth walk, then octave
+      drums: {
+        kick: [[[0], [2]], [[0]]],
+        snare: [[[1], [3]]],
+      },
       filterBase: 500,
       chords: [
         ["F2", "C4", "E4", "A4", "D5"],
@@ -61,6 +65,10 @@ export const THEMES = [
     bgm: {
       barSec: 3.2,
       bass: [[[0, 0.5, 0], [0.5, 0.5, 1], [1, 0.5, 2], [1.5, 0.5, 3], [2, 0.5, 4], [2.5, 0.5, 3], [3, 0.5, 2], [3.5, 0.5, 1]], [[0, 1, 0], [1, 1, 2], [2, 1, 1], [3, 1, 3]]], // Ember: eighths arpeggiating the chord, then half-note walk
+      drums: {
+        kick: [[[0], [0.5], [1], [1.5], [2], [2.5], [3], [3.5]], [[0], [1], [2], [3]]],
+        snare: [[[1], [3]]],
+      },
       filterBase: 620,
       chords: [
         ["A2", "C4", "E4", "G4"],
@@ -97,6 +105,10 @@ export const THEMES = [
     bgm: {
       barSec: 4.0,
       bass: [[[0, 2, 0], [2, 2, 2]], [[0, 1.5, 1], [2, 1, 3], [3, 1, 2]], [[0, 4, 4]]], // Grove: root-fifth halves / dotted walk / octave
+      drums: {
+        kick: [[[0], [2]], [[0], [2], [3]], [[0]]],
+        snare: [[[1], [3]], [[1], [3]]],
+      },
       filterBase: 450,
       chords: [
         ["C3", "G3", "B3", "E4", "A4"],
@@ -133,6 +145,10 @@ export const THEMES = [
     bgm: {
       barSec: 2.8,
       bass: [[[0, 0.75, 0], [1, 0.5, 2], [1.75, 0.5, 3], [2.5, 1.5, 1]], [[0, 1, 0], [1.5, 0.5, 4], [2, 2, 2]], [[0, 0.5, 0], [0.75, 0.25, 1], [1, 0.5, 2], [2, 0.5, 3], [2.5, 0.5, 4], [3, 1, 2]]], // Neon: syncopated chord walks
+      drums: {
+        kick: [[[0], [1], [1.75], [2.5]], [[0], [1.5], [2]], [[0], [0.75], [1], [2], [2.5], [3]]],
+        snare: [[[1], [3]], [[1], [3]], [[1], [2.5], [3]]],
+      },
       filterBase: 700,
       chords: [
         ["D3", "A3", "C4", "F4"],

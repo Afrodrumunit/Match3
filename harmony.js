@@ -63,6 +63,16 @@ export function quantizeToChord(freq, tones, maxOctaves = 2) {
   return f;
 }
 
+export function drumHits(theme, barIndex, barSec) {
+  const drums = theme.bgm.drums || { kick: [[[0], [2]]], snare: [[[1], [3]]] };
+  const beatLen = barSec / 4;
+  const pick = (list) => list[barIndex % list.length];
+  return {
+    kick: pick(drums.kick).map(([beat]) => ({ at: beat * beatLen })),
+    snare: pick(drums.snare).map(([beat]) => ({ at: beat * beatLen })),
+  };
+}
+
 export function arpNotes(theme, barIndex, steps, octave = 2) {
   const tones = chordTones(theme, barIndex);
   const pattern = patternAt(theme, barIndex);

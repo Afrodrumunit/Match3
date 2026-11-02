@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { THEMES, themeForLevel, N } from "../themes.js";
-import { chordAt, bassAt, bassLine, patternAt, chordTones, nearestChordTone, quantizeToChord, arpNotes } from "../harmony.js";
+import { chordAt, bassAt, bassLine, drumHits, patternAt, chordTones, nearestChordTone, quantizeToChord, arpNotes } from "../harmony.js";
 
 let pass = 0;
 const t = (name, fn) => { try { fn(); pass++; console.log("PASS", name); } catch (e) { console.log("FAIL", name, "-", e.message); process.exitCode = 1; } };
@@ -82,6 +82,29 @@ t("bassLine falls back to whole note when no bass patterns defined", () => {
 t("bass patterns differ per theme", () => {
   const counts = THEMES.map((t) => t.bgm.bass.length);
   assert.ok(new Set(counts).size > 1);
+});
+
+t("drumHits: beats within bar, rotates patterns, kicks lock onto bass onsets", () => {
+  for (const th of THEMES) {
+    const barSec = th.bgm.barSec;
+    for (let b = 0; b < th.bgm.chords.length; b++) {
+      const hits = drumHits(th, b, barSec);
+      for (const h of [...hits.kick, ...hits.snare]) {
+        assert.ok(h.at >= 0 && h.at < barSec, `drum beat ${h.at} within bar (${barSec})`);
+      }
+      const bassOnsets = new Set(bassLine(th, b, barSec).map((n) => n.at.toFixed(3)));
+      for (const k of hits.kick) {
+        assert.ok(bassOnsets.has(k.at.toFixed(3)), `kick at ${k.at} coincides with a bass onset in ${th.name} bar ${b}`);
+      }
+    }
+  }
+});
+
+t("drumHits falls back to standard boom-bap when no drums defined", () => {
+  const th = { bgm: { chords: [["C3", "E3", "G3"]], barSec: 4 } };
+  const hits = drumHits(th, 0, 4);
+  assert.deepEqual(hits.kick.map((h) => h.at), [0, 2]);
+  assert.deepEqual(hits.snare.map((h) => h.at), [1, 3]);
 });
 
 t("all themes: every bar has chord + pattern", () => {
