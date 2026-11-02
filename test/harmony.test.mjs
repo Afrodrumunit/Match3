@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { THEMES, themeForLevel, N } from "../themes.js";
+import { THEMES, DEFAULT_BASS_PATCH, themeForLevel, N } from "../themes.js";
 import { chordAt, bassAt, bassLine, drumHits, polyHits, polyCycle, gcd, lcm, percHits, bassPatch, patternAt, chordTones, nearestChordTone, quantizeToChord, arpNotes } from "../harmony.js";
 
 let pass = 0;
@@ -155,24 +155,21 @@ t("percHits: every perc voice fits in bar and rotates", () => {
   }
 });
 
-t("bassPatch is stable per pick (theme-level choice, not per-bar)", () => {
+t("exactly one bass patch per theme + 1 shared default", () => {
   const waves = new Set(["sine", "triangle", "square", "sawtooth"]);
-  for (const th of THEMES) {
-    assert.ok(th.bgm.bassPatches.length >= 2, `${th.name} needs >=2 patches`);
-    for (let pick = 0; pick < th.bgm.bassPatches.length; pick++) {
-      const p = bassPatch(th, pick);
-      assert.ok(waves.has(p.wave));
-      assert.ok(p.cutoff > 0 && p.vol > 0);
-      assert.deepEqual(bassPatch(th, pick), p, "same pick -> same patch");
-      assert.deepEqual(bassPatch(th, pick + th.bgm.bassPatches.length), p, "wraps");
-    }
+  const all = [DEFAULT_BASS_PATCH, ...THEMES.map((t) => bassPatch(t))];
+  assert.equal(all.length, THEMES.length + 1);
+  const sigs = new Set(all.map((p) => `${p.wave}@${p.cutoff}`));
+  assert.equal(sigs.size, all.length, "all patches should be distinct");
+  for (const p of all) {
+    assert.ok(waves.has(p.wave));
+    assert.ok(p.cutoff > 0 && p.vol > 0);
   }
 });
 
-t("bassPatch falls back when undefined", () => {
+t("bassPatch falls back to DEFAULT_BASS_PATCH", () => {
   const th = { bgm: { chords: [["C3"]], barSec: 4 } };
-  const p = bassPatch(th, 0);
-  assert.equal(p.wave, "sawtooth");
+  assert.deepEqual(bassPatch(th), DEFAULT_BASS_PATCH);
 });
 
 t("all themes: every bar has chord + pattern", () => {

@@ -7,6 +7,8 @@ export const N = {
   C6: 1046.5, E6: 1318.5,
 };
 
+export const DEFAULT_BASS_PATCH = { wave: "triangle", cutoff: 700, vol: 0.055 };
+
 export const THEMES = [
   {
     name: "Azure",
@@ -30,12 +32,9 @@ export const THEMES = [
         snare: [[[1], [3]]],
         perc: { hat: [[[0], [0.5], [1], [1.5], [2], [2.5], [3], [3.5]], [[0], [1], [2], [3]]], rim: [[[1.5], [3.5]], [[3]]] },
       },
-      bassPatches: [
-        { wave: "sawtooth", cutoff: 420, vol: 0.05 },
-        { wave: "triangle", cutoff: 900, vol: 0.055 },
-      ],
-      poly: { group: 3, shaker: true }, // Azure: 3-over-4 hemiola
+            poly: { group: 3, shaker: true }, // Azure: 3-over-4 hemiola
       filterBase: 500,
+      bassPatch: { wave: "sawtooth", cutoff: 420, vol: 0.05 }, // Azure: dark filtered saw
       chords: [
         ["F2", "C4", "E4", "A4", "D5"],
         ["C3", "G3", "B3", "E4", "A4"],
@@ -76,12 +75,9 @@ export const THEMES = [
         snare: [[[1], [3]]],
         perc: { hat: [[[0.25], [0.75], [1.25], [1.75], [2.25], [2.75], [3.25], [3.75]], [[0.5], [1.5], [2.5], [3.5]]], openhat: [[[3]], [[2], [3]]], rim: [[[0], [2]], [[1], [3]]] },
       },
-      bassPatches: [
-        { wave: "square", cutoff: 300, vol: 0.05 },
-        { wave: "sawtooth", cutoff: 550, vol: 0.045 },
-      ],
-      poly: { group: 3, shaker: false }, // Ember: hemiola accents only, drums carry the drive
+            poly: { group: 3, shaker: false }, // Ember: hemiola accents only, drums carry the drive
       filterBase: 620,
+      bassPatch: { wave: "square", cutoff: 300, vol: 0.05 }, // Ember: hollow square sub
       chords: [
         ["A2", "C4", "E4", "G4"],
         ["F2", "A3", "C4", "E4"],
@@ -122,13 +118,9 @@ export const THEMES = [
         snare: [[[1], [3]], [[1], [3]]],
         perc: { hat: [[[0], [1], [2], [3]], [[0.5], [1.5], [2.5], [3.5]]], clave: [[[0], [1.5], [2], [3.5]], [[0], [2.5]]], tom: [[[3]], []] },
       },
-      bassPatches: [
-        { wave: "sine", cutoff: 1000, vol: 0.06 },
-        { wave: "triangle", cutoff: 700, vol: 0.055 },
-        { wave: "sawtooth", cutoff: 380, vol: 0.045 },
-      ],
-      poly: { group: 5, shaker: true }, // Grove: 5-over-4 cross-rhythm
+            poly: { group: 5, shaker: true }, // Grove: 5-over-4 cross-rhythm
       filterBase: 450,
+      bassPatch: { wave: "sine", cutoff: 1000, vol: 0.06 }, // Grove: round sine
       chords: [
         ["C3", "G3", "B3", "E4", "A4"],
         ["G2", "D3", "F4", "B3", "E4"],
@@ -169,13 +161,9 @@ export const THEMES = [
         snare: [[[1], [3]], [[1], [3]], [[1], [2.5], [3]]],
         perc: { hat: [[[0], [0.5], [1], [1.5], [2], [2.5], [3], [3.5]], [[0.5], [1], [1.5], [2], [2.5], [3], [3.5]]], openhat: [[[2], [3]], [[1], [3]]], rim: [[[0.5], [1.5], [2.5], [3.5]], [[0.25], [1.25], [2.25], [3.25]]] },
       },
-      bassPatches: [
-        { wave: "sawtooth", cutoff: 800, vol: 0.045 },
-        { wave: "square", cutoff: 500, vol: 0.05 },
-        { wave: "sawtooth", cutoff: 1200, vol: 0.04 },
-      ],
-      poly: { group: 3, shaker: true, accent: true }, // Neon: 3-over-4 with accented pluck downbeats
+            poly: { group: 3, shaker: true, accent: true }, // Neon: 3-over-4 with accented pluck downbeats
       filterBase: 700,
+      bassPatch: { wave: "sawtooth", cutoff: 800, vol: 0.045 }, // Neon: bright saw
       chords: [
         ["D3", "A3", "C4", "F4"],
         ["Bb2", "F3", "A3", "D4"],

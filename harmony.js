@@ -1,4 +1,4 @@
-import { N } from "./themes.js";
+import { N, DEFAULT_BASS_PATCH } from "./themes.js";
 
 export function chordAt(theme, barIndex) {
   const chords = theme.bgm.chords;
@@ -114,9 +114,8 @@ export function percHits(theme, barIndex, barSec) {
   return out;
 }
 
-export function bassPatch(theme, pick = 0) {
-  const patches = theme.bgm.bassPatches || [{ wave: "sawtooth", cutoff: 500, vol: 0.045 }];
-  return patches[((pick % patches.length) + patches.length) % patches.length];
+export function bassPatch(theme) {
+  return theme.bgm.bassPatch || DEFAULT_BASS_PATCH;
 }
 
 export function arpNotes(theme, barIndex, steps, octave = 2) {
