@@ -114,9 +114,9 @@ export function percHits(theme, barIndex, barSec) {
   return out;
 }
 
-export function bassPatch(theme, barIndex) {
+export function bassPatch(theme, pick = 0) {
   const patches = theme.bgm.bassPatches || [{ wave: "sawtooth", cutoff: 500, vol: 0.045 }];
-  return patches[barIndex % patches.length];
+  return patches[((pick % patches.length) + patches.length) % patches.length];
 }
 
 export function arpNotes(theme, barIndex, steps, octave = 2) {

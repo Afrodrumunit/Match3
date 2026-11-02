@@ -259,7 +259,6 @@ export function createSfx(getTheme) {
             const chordNotes = chordAt(theme, this.barIndex);
             const pattern = patternAt(theme, this.barIndex);
             chordNotes.forEach((f) => pad(f, t, barSec * 1.15, 0.02));
-            const patch = bassPatch(theme, this.barIndex);
             for (const note of bassLine(theme, this.barIndex, barSec)) {
               pad(note.freq, t + note.at, note.dur * 1.1, 0.045, patch);
             }

@@ -155,18 +155,17 @@ t("percHits: every perc voice fits in bar and rotates", () => {
   }
 });
 
-t("bassPatch rotates through theme patches with valid wave/cutoff", () => {
+t("bassPatch is stable per pick (theme-level choice, not per-bar)", () => {
   const waves = new Set(["sine", "triangle", "square", "sawtooth"]);
   for (const th of THEMES) {
     assert.ok(th.bgm.bassPatches.length >= 2, `${th.name} needs >=2 patches`);
-    const seen = new Set();
-    for (let b = 0; b < th.bgm.bassPatches.length * 2; b++) {
-      const p = bassPatch(th, b);
+    for (let pick = 0; pick < th.bgm.bassPatches.length; pick++) {
+      const p = bassPatch(th, pick);
       assert.ok(waves.has(p.wave));
       assert.ok(p.cutoff > 0 && p.vol > 0);
-      seen.add(p.wave + p.cutoff);
+      assert.deepEqual(bassPatch(th, pick), p, "same pick -> same patch");
+      assert.deepEqual(bassPatch(th, pick + th.bgm.bassPatches.length), p, "wraps");
     }
-    assert.equal(seen.size, th.bgm.bassPatches.length, "rotation cycles through all patches");
   }
 });
 
