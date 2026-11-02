@@ -28,7 +28,12 @@ export const THEMES = [
       drums: {
         kick: [[[0], [2]], [[0]]],
         snare: [[[1], [3]]],
+        perc: { hat: [[[0], [0.5], [1], [1.5], [2], [2.5], [3], [3.5]], [[0], [1], [2], [3]]], rim: [[[1.5], [3.5]], [[3]]] },
       },
+      bassPatches: [
+        { wave: "sawtooth", cutoff: 420, vol: 0.05 },
+        { wave: "triangle", cutoff: 900, vol: 0.055 },
+      ],
       poly: { group: 3, shaker: true }, // Azure: 3-over-4 hemiola
       filterBase: 500,
       chords: [
@@ -69,7 +74,12 @@ export const THEMES = [
       drums: {
         kick: [[[0], [0.5], [1], [1.5], [2], [2.5], [3], [3.5]], [[0], [1], [2], [3]]],
         snare: [[[1], [3]]],
+        perc: { hat: [[[0.25], [0.75], [1.25], [1.75], [2.25], [2.75], [3.25], [3.75]], [[0.5], [1.5], [2.5], [3.5]]], openhat: [[[3]], [[2], [3]]], rim: [[[0], [2]], [[1], [3]]] },
       },
+      bassPatches: [
+        { wave: "square", cutoff: 300, vol: 0.05 },
+        { wave: "sawtooth", cutoff: 550, vol: 0.045 },
+      ],
       poly: { group: 3, shaker: false }, // Ember: hemiola accents only, drums carry the drive
       filterBase: 620,
       chords: [
@@ -110,7 +120,13 @@ export const THEMES = [
       drums: {
         kick: [[[0], [2]], [[0], [2], [3]], [[0]]],
         snare: [[[1], [3]], [[1], [3]]],
+        perc: { hat: [[[0], [1], [2], [3]], [[0.5], [1.5], [2.5], [3.5]]], clave: [[[0], [1.5], [2], [3.5]], [[0], [2.5]]], tom: [[[3]], []] },
       },
+      bassPatches: [
+        { wave: "sine", cutoff: 1000, vol: 0.06 },
+        { wave: "triangle", cutoff: 700, vol: 0.055 },
+        { wave: "sawtooth", cutoff: 380, vol: 0.045 },
+      ],
       poly: { group: 5, shaker: true }, // Grove: 5-over-4 cross-rhythm
       filterBase: 450,
       chords: [
@@ -151,7 +167,13 @@ export const THEMES = [
       drums: {
         kick: [[[0], [1], [1.75], [2.5]], [[0], [1.5], [2]], [[0], [0.75], [1], [2], [2.5], [3]]],
         snare: [[[1], [3]], [[1], [3]], [[1], [2.5], [3]]],
+        perc: { hat: [[[0], [0.5], [1], [1.5], [2], [2.5], [3], [3.5]], [[0.5], [1], [1.5], [2], [2.5], [3], [3.5]]], openhat: [[[2], [3]], [[1], [3]]], rim: [[[0.5], [1.5], [2.5], [3.5]], [[0.25], [1.25], [2.25], [3.25]]] },
       },
+      bassPatches: [
+        { wave: "sawtooth", cutoff: 800, vol: 0.045 },
+        { wave: "square", cutoff: 500, vol: 0.05 },
+        { wave: "sawtooth", cutoff: 1200, vol: 0.04 },
+      ],
       poly: { group: 3, shaker: true, accent: true }, // Neon: 3-over-4 with accented pluck downbeats
       filterBase: 700,
       chords: [

@@ -1,5 +1,5 @@
 import { N } from "./themes.js";
-import { chordAt, bassAt, bassLine, patternAt, chordTones, quantizeToChord, drumHits, polyHits } from "./harmony.js";
+import { chordAt, bassAt, bassLine, patternAt, chordTones, quantizeToChord, drumHits, polyHits, percHits, bassPatch } from "./harmony.js";
 
 export function createSfx(getTheme) {
   let ctx = null;
@@ -88,20 +88,23 @@ export function createSfx(getTheme) {
     }
   }
 
-  function pad(freq, t, dur, vol) {
+  function pad(freq, t, dur, vol, patch = null) {
     if (muted) return;
     try {
       const ac = ensure();
       if (!ac) return;
-      for (const det of [-7, -2, 3, 8]) {
+      const wave = patch ? patch.wave : "sawtooth";
+      const v = patch ? patch.vol : vol;
+      if (patch && filter) filter.frequency.setValueAtTime(patch.cutoff, t);
+      for (const det of patch ? [0] : [-7, -2, 3, 8]) {
         const osc = ac.createOscillator();
         const gain = ac.createGain();
-        osc.type = "sawtooth";
+        osc.type = wave;
         osc.frequency.setValueAtTime(freq, t);
         osc.detune.setValueAtTime(det, t);
         gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.linearRampToValueAtTime(vol, t + dur * 0.45);
-        gain.gain.setValueAtTime(vol, t + dur * 0.65);
+        gain.gain.linearRampToValueAtTime(v, t + dur * 0.45);
+        gain.gain.setValueAtTime(v, t + dur * 0.65);
         gain.gain.linearRampToValueAtTime(0.0001, t + dur);
         osc.connect(gain);
         gain.connect(filter);
@@ -174,31 +177,32 @@ export function createSfx(getTheme) {
 
   const snare = (t, vol) => noiseHit(t, vol, "bandpass", 1900, 0.16);
 
-  function hiss() {
+  function percVoice(name, t, vol) {
+    if (muted) return;
     try {
       const ac = ensure();
-      if (!ac || noiseBuf) return;
-      const len = ac.sampleRate * 2;
-      noiseBuf = ac.createBuffer(1, len, ac.sampleRate);
-      const data = noiseBuf.getChannelData(0);
-      let last = 0;
-      for (let i = 0; i < len; i++) {
-        const white = Math.random() * 2 - 1;
-        last = (last + 0.02 * white) / 1.02;
-        data[i] = last * 3.2 + white * 0.12;
-      }
+      if (!ac || !noiseBuf) return;
+      const specs = {
+        hat: { type: "highpass", freq: 8000, dur: 0.05, gain: vol },
+        openhat: { type: "highpass", freq: 6500, dur: 0.3, gain: vol * 0.8 },
+        rim: { type: "bandpass", freq: 3200, dur: 0.04, gain: vol * 1.2 },
+        clave: { type: "bandpass", freq: 1800, dur: 0.06, gain: vol * 1.3 },
+        tom: { type: "lowpass", freq: 500, dur: 0.18, gain: vol },
+      };
+      const sp = specs[name] || specs.hat;
       const src = ac.createBufferSource();
       src.buffer = noiseBuf;
-      src.loop = true;
-      const lp = ac.createBiquadFilter();
-      lp.type = "lowpass";
-      lp.frequency.value = 6500;
+      const f = ac.createBiquadFilter();
+      f.type = sp.type;
+      f.frequency.value = sp.freq;
       const gain = ac.createGain();
-      gain.gain.value = 0.012;
-      src.connect(lp);
-      lp.connect(gain);
+      gain.gain.setValueAtTime(sp.gain, t);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + sp.dur);
+      src.connect(f);
+      f.connect(gain);
       gain.connect(master);
-      src.start();
+      src.start(t);
+      src.stop(t + sp.dur + 0.05);
     } catch { /* ignore */ }
   }
 
@@ -234,7 +238,6 @@ export function createSfx(getTheme) {
       start() {
         const ac = ensure();
         if (!ac || this.timer) return;
-        hiss();
         this.nextBar = ac.currentTime + 0.1;
         this.barIndex = 0;
         this.timer = setInterval(() => this.schedule(), 400);
@@ -256,8 +259,9 @@ export function createSfx(getTheme) {
             const chordNotes = chordAt(theme, this.barIndex);
             const pattern = patternAt(theme, this.barIndex);
             chordNotes.forEach((f) => pad(f, t, barSec * 1.15, 0.02));
+            const patch = bassPatch(theme, this.barIndex);
             for (const note of bassLine(theme, this.barIndex, barSec)) {
-              pad(note.freq, t + note.at, note.dur * 1.1, 0.045);
+              pad(note.freq, t + note.at, note.dur * 1.1, 0.045, patch);
             }
             if (filter) {
               const sweep = cfg.filterBase + 420 * (0.5 + 0.5 * Math.sin((this.barIndex / theme.bgm.chords.length) * Math.PI * 6));
@@ -271,6 +275,10 @@ export function createSfx(getTheme) {
             const hits = drumHits(theme, this.barIndex, barSec);
             for (const h of hits.kick) kick(t + h.at, 0.16);
             for (const h of hits.snare) snare(t + h.at, 0.07);
+            const perc = percHits(theme, this.barIndex, barSec);
+            for (const [name, list] of Object.entries(perc)) {
+              for (const h of list) percVoice(name, t + h.at, 0.05);
+            }
             const poly = polyHits(theme, this.barIndex, barSec);
             for (const s of poly.shaker) noiseHit(t + s.at, 0.03, "highpass", 7000, 0.05);
             for (const a of poly.accents) pluck(chordNotes[0] * 4, t + a.at, 0.06);

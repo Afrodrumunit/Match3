@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { THEMES, themeForLevel, N } from "../themes.js";
-import { chordAt, bassAt, bassLine, drumHits, polyHits, polyCycle, gcd, lcm, patternAt, chordTones, nearestChordTone, quantizeToChord, arpNotes } from "../harmony.js";
+import { chordAt, bassAt, bassLine, drumHits, polyHits, polyCycle, gcd, lcm, percHits, bassPatch, patternAt, chordTones, nearestChordTone, quantizeToChord, arpNotes } from "../harmony.js";
 
 let pass = 0;
 const t = (name, fn) => { try { fn(); pass++; console.log("PASS", name); } catch (e) { console.log("FAIL", name, "-", e.message); process.exitCode = 1; } };
@@ -140,6 +140,40 @@ t("polyrhythm phase realigns every lcm bars (hemiola feel)", () => {
   assert.deepEqual(hits0.shaker, hits12.shaker, "bar 0 and bar 12 have identical phase");
   const hits1 = polyHits(th, 1, th.bgm.barSec);
   assert.deepEqual(hits1.shaker, hits0.shaker, "within a bar the 3-group is static");
+});
+
+t("percHits: every perc voice fits in bar and rotates", () => {
+  for (const th of THEMES) {
+    const names = Object.keys(th.bgm.drums.perc);
+    assert.ok(names.length >= 2, `${th.name} should have >=2 perc voices`);
+    for (let b = 0; b < 16; b++) {
+      const hits = percHits(th, b, th.bgm.barSec);
+      for (const [name, list] of Object.entries(hits)) {
+        for (const h of list) assert.ok(h.at >= 0 && h.at < th.bgm.barSec, `${name}@${h.at} in bar ${b}`);
+      }
+    }
+  }
+});
+
+t("bassPatch rotates through theme patches with valid wave/cutoff", () => {
+  const waves = new Set(["sine", "triangle", "square", "sawtooth"]);
+  for (const th of THEMES) {
+    assert.ok(th.bgm.bassPatches.length >= 2, `${th.name} needs >=2 patches`);
+    const seen = new Set();
+    for (let b = 0; b < th.bgm.bassPatches.length * 2; b++) {
+      const p = bassPatch(th, b);
+      assert.ok(waves.has(p.wave));
+      assert.ok(p.cutoff > 0 && p.vol > 0);
+      seen.add(p.wave + p.cutoff);
+    }
+    assert.equal(seen.size, th.bgm.bassPatches.length, "rotation cycles through all patches");
+  }
+});
+
+t("bassPatch falls back when undefined", () => {
+  const th = { bgm: { chords: [["C3"]], barSec: 4 } };
+  const p = bassPatch(th, 0);
+  assert.equal(p.wave, "sawtooth");
 });
 
 t("all themes: every bar has chord + pattern", () => {

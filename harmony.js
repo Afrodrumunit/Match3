@@ -103,6 +103,22 @@ export function polyHits(theme, barIndex, barSec) {
   return { shaker, accents, cycle, group };
 }
 
+export function percHits(theme, barIndex, barSec) {
+  const perc = theme.bgm.drums?.perc || {};
+  const beatLen = barSec / 4;
+  const out = {};
+  for (const [name, patterns] of Object.entries(perc)) {
+    const pattern = patterns[barIndex % patterns.length];
+    out[name] = pattern.map(([beat]) => ({ at: beat * beatLen }));
+  }
+  return out;
+}
+
+export function bassPatch(theme, barIndex) {
+  const patches = theme.bgm.bassPatches || [{ wave: "sawtooth", cutoff: 500, vol: 0.045 }];
+  return patches[barIndex % patches.length];
+}
+
 export function arpNotes(theme, barIndex, steps, octave = 2) {
   const tones = chordTones(theme, barIndex);
   const pattern = patternAt(theme, barIndex);
