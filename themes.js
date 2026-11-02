@@ -29,6 +29,7 @@ export const THEMES = [
         kick: [[[0], [2]], [[0]]],
         snare: [[[1], [3]]],
       },
+      poly: { group: 3, shaker: true }, // Azure: 3-over-4 hemiola
       filterBase: 500,
       chords: [
         ["F2", "C4", "E4", "A4", "D5"],
@@ -69,6 +70,7 @@ export const THEMES = [
         kick: [[[0], [0.5], [1], [1.5], [2], [2.5], [3], [3.5]], [[0], [1], [2], [3]]],
         snare: [[[1], [3]]],
       },
+      poly: { group: 3, shaker: false }, // Ember: hemiola accents only, drums carry the drive
       filterBase: 620,
       chords: [
         ["A2", "C4", "E4", "G4"],
@@ -109,6 +111,7 @@ export const THEMES = [
         kick: [[[0], [2]], [[0], [2], [3]], [[0]]],
         snare: [[[1], [3]], [[1], [3]]],
       },
+      poly: { group: 5, shaker: true }, // Grove: 5-over-4 cross-rhythm
       filterBase: 450,
       chords: [
         ["C3", "G3", "B3", "E4", "A4"],
@@ -149,6 +152,7 @@ export const THEMES = [
         kick: [[[0], [1], [1.75], [2.5]], [[0], [1.5], [2]], [[0], [0.75], [1], [2], [2.5], [3]]],
         snare: [[[1], [3]], [[1], [3]], [[1], [2.5], [3]]],
       },
+      poly: { group: 3, shaker: true, accent: true }, // Neon: 3-over-4 with accented pluck downbeats
       filterBase: 700,
       chords: [
         ["D3", "A3", "C4", "F4"],

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { THEMES, themeForLevel, N } from "../themes.js";
-import { chordAt, bassAt, bassLine, drumHits, patternAt, chordTones, nearestChordTone, quantizeToChord, arpNotes } from "../harmony.js";
+import { chordAt, bassAt, bassLine, drumHits, polyHits, polyCycle, gcd, lcm, patternAt, chordTones, nearestChordTone, quantizeToChord, arpNotes } from "../harmony.js";
 
 let pass = 0;
 const t = (name, fn) => { try { fn(); pass++; console.log("PASS", name); } catch (e) { console.log("FAIL", name, "-", e.message); process.exitCode = 1; } };
@@ -105,6 +105,41 @@ t("drumHits falls back to standard boom-bap when no drums defined", () => {
   const hits = drumHits(th, 0, 4);
   assert.deepEqual(hits.kick.map((h) => h.at), [0, 2]);
   assert.deepEqual(hits.snare.map((h) => h.at), [1, 3]);
+});
+
+t("gcd/lcm: 3-over-4 cycle is 12 beats, 5-over-4 is 20", () => {
+  assert.equal(gcd(4, 3), 1);
+  assert.equal(lcm(4, 3), 12);
+  assert.equal(lcm(4, 5), 20);
+  assert.equal(polyCycle(3), 12);
+  assert.equal(polyCycle(5), 20);
+});
+
+t("polyHits: shaker divides bar into group parts, fits within bar", () => {
+  for (const th of THEMES) {
+    const group = th.bgm.poly.group;
+    for (let b = 0; b < 24; b++) {
+      const hits = polyHits(th, b, th.bgm.barSec);
+      assert.equal(hits.shaker.length, th.bgm.poly.shaker === false ? 0 : group);
+      if (th.bgm.poly.shaker !== false) {
+        for (let i = 0; i < group; i++) {
+          assert.ok(Math.abs(hits.shaker[i].at - (i * th.bgm.barSec) / group) < 1e-9);
+          assert.ok(hits.shaker[i].at < th.bgm.barSec);
+        }
+      }
+      const shouldAccent = !!th.bgm.poly.accent && b % hits.cycle === 0;
+      assert.equal(hits.accents.length, shouldAccent ? 1 : 0);
+    }
+  }
+});
+
+t("polyrhythm phase realigns every lcm bars (hemiola feel)", () => {
+  const th = THEMES[0]; // group 3 -> cycle 12
+  const hits0 = polyHits(th, 0, th.bgm.barSec);
+  const hits12 = polyHits(th, 12, th.bgm.barSec);
+  assert.deepEqual(hits0.shaker, hits12.shaker, "bar 0 and bar 12 have identical phase");
+  const hits1 = polyHits(th, 1, th.bgm.barSec);
+  assert.deepEqual(hits1.shaker, hits0.shaker, "within a bar the 3-group is static");
 });
 
 t("all themes: every bar has chord + pattern", () => {

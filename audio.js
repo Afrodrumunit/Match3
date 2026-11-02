@@ -1,5 +1,5 @@
 import { N } from "./themes.js";
-import { chordAt, bassAt, bassLine, patternAt, chordTones, quantizeToChord, drumHits } from "./harmony.js";
+import { chordAt, bassAt, bassLine, patternAt, chordTones, quantizeToChord, drumHits, polyHits } from "./harmony.js";
 
 export function createSfx(getTheme) {
   let ctx = null;
@@ -271,6 +271,9 @@ export function createSfx(getTheme) {
             const hits = drumHits(theme, this.barIndex, barSec);
             for (const h of hits.kick) kick(t + h.at, 0.16);
             for (const h of hits.snare) snare(t + h.at, 0.07);
+            const poly = polyHits(theme, this.barIndex, barSec);
+            for (const s of poly.shaker) noiseHit(t + s.at, 0.03, "highpass", 7000, 0.05);
+            for (const a of poly.accents) pluck(chordNotes[0] * 4, t + a.at, 0.06);
             if (Math.random() < 0.6) crackle(t + Math.random() * barSec);
             this.currentBar = this.barIndex;
             this.nextBar += barSec;

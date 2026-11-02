@@ -73,6 +73,36 @@ export function drumHits(theme, barIndex, barSec) {
   };
 }
 
+export function gcd(a, b) {
+  while (b) { [a, b] = [b, a % b]; }
+  return a;
+}
+
+export function lcm(a, b) {
+  return (a * b) / gcd(a, b);
+}
+
+export function polyCycle(group, beats = 4) {
+  return lcm(group, beats);
+}
+
+export function polyHits(theme, barIndex, barSec) {
+  const poly = theme.bgm.poly || { group: 3, shaker: false };
+  const group = poly.group;
+  const cycle = polyCycle(group, 4);
+  const shaker = [];
+  if (poly.shaker !== false) {
+    for (let i = 0; i < group; i++) {
+      shaker.push({ at: (i * barSec) / group });
+    }
+  }
+  const accents = [];
+  if (poly.accent && barIndex % cycle === 0) {
+    accents.push({ at: 0 });
+  }
+  return { shaker, accents, cycle, group };
+}
+
 export function arpNotes(theme, barIndex, steps, octave = 2) {
   const tones = chordTones(theme, barIndex);
   const pattern = patternAt(theme, barIndex);
