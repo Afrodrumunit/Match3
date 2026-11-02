@@ -10,6 +10,18 @@ export function bassAt(theme, barIndex) {
   return chordAt(theme, barIndex)[0] / 2;
 }
 
+export function bassLine(theme, barIndex, barSec) {
+  const bassPatterns = theme.bgm.bass || [[[0, 4]]];
+  const pattern = bassPatterns[barIndex % bassPatterns.length];
+  const root = bassAt(theme, barIndex);
+  const fifth = chordAt(theme, barIndex)[2] / 2;
+  return pattern.map(([beat, dur], i) => ({
+    freq: i % 4 === 2 ? fifth : root,
+    at: beat * (barSec / 4),
+    dur: dur * (barSec / 4),
+  }));
+}
+
 export function patternAt(theme, barIndex) {
   const patterns = theme.bgm.patterns;
   const bar = ((barIndex % patterns.length) + patterns.length) % patterns.length;

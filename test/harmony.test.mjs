@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { THEMES, themeForLevel, N } from "../themes.js";
-import { chordAt, bassAt, patternAt, chordTones, nearestChordTone, quantizeToChord, arpNotes } from "../harmony.js";
+import { chordAt, bassAt, bassLine, patternAt, chordTones, nearestChordTone, quantizeToChord, arpNotes } from "../harmony.js";
 
 let pass = 0;
 const t = (name, fn) => { try { fn(); pass++; console.log("PASS", name); } catch (e) { console.log("FAIL", name, "-", e.message); process.exitCode = 1; } };
@@ -44,6 +44,36 @@ t("arpNotes follows pattern over chord tones", () => {
   const tones = chordTones(theme, 0);
   const pat = patternAt(theme, 0);
   notes.forEach((f, i) => assert.equal(f, tones[pat[i % pat.length] % tones.length] * 2));
+});
+
+t("bassLine: offsets/durations within bar, rotates patterns, uses root+fifth", () => {
+  for (const th of THEMES) {
+    for (let b = 0; b < th.bgm.chords.length; b++) {
+      const notes = bassLine(th, b, th.bgm.barSec);
+      assert.ok(notes.length >= 1);
+      const barDur = th.bgm.barSec;
+      for (const n of notes) {
+        assert.ok(n.at >= 0 && n.at < barDur, `offset ${n.at} within bar`);
+        assert.ok(n.dur > 0 && n.at + n.dur <= barDur + 1e-9, `dur fits: ${n.at}+${n.dur} <= ${barDur}`);
+        const root = bassAt(th, b);
+        const fifth = chordAt(th, b)[2] / 2;
+        assert.ok(n.freq === root || n.freq === fifth);
+      }
+    }
+  }
+});
+
+t("bassLine falls back to whole note when no bass patterns defined", () => {
+  const th = { bgm: { chords: [["C3", "E3", "G3"]], barSec: 4 } };
+  const notes = bassLine(th, 0, 4);
+  assert.equal(notes.length, 1);
+  assert.equal(notes[0].at, 0);
+  assert.equal(notes[0].dur, 4);
+});
+
+t("bass patterns differ per theme", () => {
+  const counts = THEMES.map((t) => t.bgm.bass.length);
+  assert.ok(new Set(counts).size > 1);
 });
 
 t("all themes: every bar has chord + pattern", () => {

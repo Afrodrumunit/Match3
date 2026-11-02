@@ -1,5 +1,5 @@
 import { N } from "./themes.js";
-import { chordAt, bassAt, patternAt, chordTones, quantizeToChord } from "./harmony.js";
+import { chordAt, bassAt, bassLine, patternAt, chordTones, quantizeToChord } from "./harmony.js";
 
 export function createSfx(getTheme) {
   let ctx = null;
@@ -256,7 +256,9 @@ export function createSfx(getTheme) {
             const chordNotes = chordAt(theme, this.barIndex);
             const pattern = patternAt(theme, this.barIndex);
             chordNotes.forEach((f) => pad(f, t, barSec * 1.15, 0.02));
-            pad(bassAt(theme, this.barIndex), t, barSec * 1.1, 0.035);
+            for (const note of bassLine(theme, this.barIndex, barSec)) {
+              pad(note.freq, t + note.at, note.dur * 1.1, 0.045);
+            }
             if (filter) {
               const sweep = cfg.filterBase + 420 * (0.5 + 0.5 * Math.sin((this.barIndex / theme.bgm.chords.length) * Math.PI * 6));
               filter.frequency.setValueAtTime(sweep, t);
