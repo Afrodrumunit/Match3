@@ -11,15 +11,20 @@ export function bassAt(theme, barIndex) {
 }
 
 export function bassLine(theme, barIndex, barSec) {
-  const bassPatterns = theme.bgm.bass || [[[0, 4]]];
+  const bassPatterns = theme.bgm.bass || [[[0, 4, 0]]];
   const pattern = bassPatterns[barIndex % bassPatterns.length];
+  const chord = chordAt(theme, barIndex);
   const root = bassAt(theme, barIndex);
-  const fifth = chordAt(theme, barIndex)[2] / 2;
-  return pattern.map(([beat, dur], i) => ({
-    freq: i % 4 === 2 ? fifth : root,
-    at: beat * (barSec / 4),
-    dur: dur * (barSec / 4),
-  }));
+  const beatLen = barSec / 4;
+  return pattern.map(([beat, dur, degree = 0]) => {
+    const chordTone = chord[degree % chord.length];
+    const octave = degree >= chord.length ? 2 : 1;
+    return {
+      freq: (degree === 0 ? root : chordTone / 2) * octave,
+      at: beat * beatLen,
+      dur: dur * beatLen,
+    };
+  });
 }
 
 export function patternAt(theme, barIndex) {

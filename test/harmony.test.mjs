@@ -46,20 +46,27 @@ t("arpNotes follows pattern over chord tones", () => {
   notes.forEach((f, i) => assert.equal(f, tones[pat[i % pat.length] % tones.length] * 2));
 });
 
-t("bassLine: offsets/durations within bar, rotates patterns, uses root+fifth", () => {
+t("bassLine: offsets/durations within bar, notes are chord tones (root octave-down)", () => {
   for (const th of THEMES) {
     for (let b = 0; b < th.bgm.chords.length; b++) {
       const notes = bassLine(th, b, th.bgm.barSec);
       assert.ok(notes.length >= 1);
       const barDur = th.bgm.barSec;
+      const chord = chordAt(th, b);
       for (const n of notes) {
         assert.ok(n.at >= 0 && n.at < barDur, `offset ${n.at} within bar`);
         assert.ok(n.dur > 0 && n.at + n.dur <= barDur + 1e-9, `dur fits: ${n.at}+${n.dur} <= ${barDur}`);
-        const root = bassAt(th, b);
-        const fifth = chordAt(th, b)[2] / 2;
-        assert.ok(n.freq === root || n.freq === fifth);
+        const inChord = chord.some((t) => Math.abs(Math.log2(n.freq / (t / 2))) < 0.02 || Math.abs(Math.log2(n.freq / t)) < 0.02);
+        assert.ok(inChord, `freq ${n.freq} is a chord tone of bar ${b}`);
       }
     }
+  }
+});
+
+t("bassLine actually walks: patterns contain >1 distinct degree", () => {
+  for (const th of THEMES) {
+    const degrees = new Set(th.bgm.bass.flat().map((n) => n[2] ?? 0));
+    assert.ok(degrees.size > 1, `${th.name} bass should use multiple chord degrees, got ${[...degrees]}`);
   }
 });
 
@@ -69,6 +76,7 @@ t("bassLine falls back to whole note when no bass patterns defined", () => {
   assert.equal(notes.length, 1);
   assert.equal(notes[0].at, 0);
   assert.equal(notes[0].dur, 4);
+  assert.equal(notes[0].freq, N.C3 / 2);
 });
 
 t("bass patterns differ per theme", () => {
