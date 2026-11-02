@@ -313,7 +313,7 @@ export function createSfx(getTheme, getLevel = () => 1) {
   const bgm = makeBgm();
 
   return {
-    setTheme(t) { bgm.setTheme(t); },
+    setTheme(t, level) { bgm.setTheme(t, level); },
     unlock() {
       const ac = ensure();
       if (ac && !chirped) {

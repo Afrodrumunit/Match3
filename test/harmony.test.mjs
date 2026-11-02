@@ -84,7 +84,7 @@ t("bass patterns differ per theme", () => {
   assert.ok(new Set(counts).size > 1);
 });
 
-t("drumHits: beats within bar, rotates patterns, kicks lock onto bass onsets", () => {
+t("drumHits: beats within bar; kicks COMPLEMENT bass (no unison, shared grid)", () => {
   for (const th of THEMES) {
     const barSec = th.bgm.barSec;
     for (let b = 0; b < th.bgm.chords.length; b++) {
@@ -93,9 +93,13 @@ t("drumHits: beats within bar, rotates patterns, kicks lock onto bass onsets", (
         assert.ok(h.at >= 0 && h.at < barSec, `drum beat ${h.at} within bar (${barSec})`);
       }
       const bassOnsets = new Set(bassLine(th, b, barSec).map((n) => n.at.toFixed(3)));
+      const grid = barSec / 16; // 16th-note grid
       for (const k of hits.kick) {
-        assert.ok(bassOnsets.has(k.at.toFixed(3)), `kick at ${k.at} coincides with a bass onset in ${th.name} bar ${b}`);
+        assert.ok(!bassOnsets.has(k.at.toFixed(3)), `kick at ${k.at} must NOT coincide with bass onset in ${th.name} bar ${b}`);
+        assert.ok(Math.abs(k.at / grid - Math.round(k.at / grid)) < 1e-3, `kick at ${k.at} is on the 16th grid`);
       }
+      // at least one kick per bar so the groove never goes empty
+      assert.ok(hits.kick.length >= 1, `${th.name} bar ${b} has a kick`);
     }
   }
 });
