@@ -245,8 +245,12 @@ export function createSfx(getTheme, getLevel = () => 1) {
 
   function makeBgm() {
     let cfg = getTheme().bgm;
+    let patch = bassPatchForLevel(getLevel());
     return {
-      setTheme(t) { cfg = t.bgm; },
+      setTheme(t, level) {
+        cfg = t.bgm;
+        patch = bassPatchForLevel(level);
+      },
       timer: null,
       nextBar: 0,
       barIndex: 0,
