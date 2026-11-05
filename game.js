@@ -2,7 +2,7 @@ import {
   SIZE, SPECIAL_BOMB, LEVEL_STEP, LEVEL_BONUS_MOVES,
   findHint, createState, trySwap, isValidSwap, resolveStep, endTurn, reshuffle,
 } from "./engine.js";
-import { themeForLevel } from "./themes.js";
+import { themeForLevel, THEMES } from "./themes.js";
 import { createSfx } from "./audio.js";
 import { createBoardView } from "./boardView.js";
 import { createStats } from "./stats.js";
@@ -32,6 +32,15 @@ import { createStats } from "./stats.js";
   const newBestEl = $("new-best");
   const top3El = $("top3");
   const playAgainBtn = $("play-again");
+  const menuEl = $("menu");
+  const playerEl = $("player");
+  const playBtn = $("play-btn");
+  const musicBtn = $("music-btn");
+  const menuSoundBtn = $("menu-sound");
+  const menuBtn = $("menu-btn");
+  const gameoverMenuBtn = $("gameover-menu");
+  const playerBackBtn = $("player-back");
+  const trackListEl = $("track-list");
 
   const stats = createStats(localStorage);
 
@@ -60,9 +69,13 @@ import { createStats } from "./stats.js";
     messageEl.textContent = text;
   }
 
+  function setCssTheme(t) {
+    for (const [k, v] of Object.entries(t.css)) document.documentElement.style.setProperty(k, v);
+  }
+
   function applyTheme(t) {
     theme = t;
-    for (const [k, v] of Object.entries(t.css)) document.documentElement.style.setProperty(k, v);
+    setCssTheme(t);
     sfx.setTheme(t, state.level);
     view.renderBoard();
   }
@@ -70,7 +83,7 @@ import { createStats } from "./stats.js";
   function scheduleHint() {
     clearTimeout(hintTimer);
     hintTimer = setTimeout(() => {
-      if (busy || state.over) return;
+      if (busy || state.over || !menuEl.hidden) return;
       const hint = findHint(state.grid);
       if (hint) view.showHint(hint);
     }, IDLE_HINT_MS);
@@ -227,13 +240,21 @@ import { createStats } from "./stats.js";
     pointerStart = null;
   });
 
-  soundBtn.addEventListener("click", () => {
+  function syncSoundButtons() {
+    const icon = sfx.muted ? "🔇" : "🔊";
+    soundBtn.textContent = icon;
+    menuSoundBtn.textContent = icon;
+  }
+
+  function toggleSound() {
     sfx.unlock();
     const nowMuted = sfx.toggle();
-    soundBtn.textContent = nowMuted ? "🔇" : "🔊";
+    syncSoundButtons();
     if (!nowMuted) sfx.match(1);
-  });
-  soundBtn.textContent = sfx.muted ? "🔇" : "🔊";
+  }
+
+  soundBtn.addEventListener("click", toggleSound);
+  menuSoundBtn.addEventListener("click", toggleSound);
 
   function showGameOver(score, top3, isNewBest) {
     finalScoreEl.textContent = score;
@@ -256,11 +277,15 @@ import { createStats } from "./stats.js";
   function newGame() {
     sfx.unlock();
     sfx.newGame();
+    currentTrack = -1;
+    menuEl.hidden = true;
+    playerEl.hidden = true;
     state = createState();
     selected = null;
     setMessage("");
     hideGameOver();
     applyTheme(themeForLevel(state.level));
+    sfx.startBgm();
     updateHud();
     scheduleHint();
   }
@@ -268,12 +293,88 @@ import { createStats } from "./stats.js";
   restartBtn.addEventListener("click", newGame);
   playAgainBtn.addEventListener("click", newGame);
 
+  let currentTrack = -1;
+  const trackRows = [];
+
+  function buildTrackList() {
+    trackListEl.innerHTML = "";
+    THEMES.forEach((t, i) => {
+      const li = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "track";
+      const bpm = Math.round(240 / t.bgm.barSec);
+      btn.innerHTML = `<span class="track-num">${i + 1}</span><span class="track-name">${t.name}</span><span class="track-bpm">${bpm} BPM</span><span class="track-state">▶</span>`;
+      btn.addEventListener("click", () => onTrack(i));
+      li.appendChild(btn);
+      trackListEl.appendChild(li);
+      trackRows.push(btn);
+    });
+  }
+
+  function renderTracks() {
+    trackRows.forEach((btn, i) => {
+      const active = i === currentTrack;
+      btn.classList.toggle("playing", active);
+      btn.querySelector(".track-state").innerHTML = active
+        ? '<span class="eq"><span></span><span></span><span></span><span></span></span>'
+        : "▶";
+    });
+  }
+
+  function onTrack(i) {
+    sfx.unlock();
+    if (currentTrack === i) {
+      currentTrack = -1;
+      sfx.stopTrack();
+      setCssTheme(theme);
+    } else {
+      currentTrack = i;
+      sfx.playTrack(THEMES[i]);
+      setCssTheme(THEMES[i]);
+    }
+    renderTracks();
+  }
+
+  function showMenu() {
+    clearTimeout(hintTimer);
+    if (currentTrack === -1) sfx.stopBgm();
+    menuEl.hidden = false;
+  }
+
+  function onPlay() {
+    sfx.unlock();
+    if (state.over) {
+      newGame();
+      return;
+    }
+    currentTrack = -1;
+    menuEl.hidden = true;
+    playerEl.hidden = true;
+    setCssTheme(theme);
+    sfx.startBgm();
+    scheduleHint();
+  }
+
+  playBtn.addEventListener("click", onPlay);
+  musicBtn.addEventListener("click", () => {
+    sfx.unlock();
+    playerEl.hidden = false;
+    renderTracks();
+  });
+  playerBackBtn.addEventListener("click", () => {
+    playerEl.hidden = true;
+  });
+  menuBtn.addEventListener("click", showMenu);
+  gameoverMenuBtn.addEventListener("click", showMenu);
+
   ["pointerdown", "touchstart", "click"].forEach((evt) =>
     window.addEventListener(evt, () => sfx.unlock(), { passive: true })
   );
 
   bestEl.textContent = best;
+  syncSoundButtons();
+  buildTrackList();
   applyTheme(theme);
   updateHud();
-  scheduleHint();
 })();

@@ -9,6 +9,11 @@ or any static file server.
 
 ## How to play
 
+- The **main menu** opens on load: **▶ Play** starts (or resumes) a game, the
+  **🔊 button** enables/disables sound (persisted), and **🎵 Music** opens a
+  player listing all **4 theme tracks** — tap a track to play it, tap again to
+  stop. The **☰ button** in the HUD (or **Menu** on the game-over screen)
+  returns to the main menu
 - **Swipe** a gem in any direction, or **tap two adjacent gems**, to swap them
 - Match **3+** of a kind to score. Cascades build **combos** that multiply points
 - Match **4** → ⚡ line gem: swap it into a match to clear its whole row/column
@@ -34,9 +39,9 @@ python3 -m http.server 8000
 | File | Role |
 |---|---|
 | `engine.js` | Pure game logic, zero DOM: board state machine (`createState`, `trySwap`, `resolveStep`, `endTurn`, `reshuffle`), match/special detection. Seeded RNG for deterministic tests |
-| `game.js` | Orchestrator: pointer input, turn flow, HUD, theme switching (~200 lines) |
+| `game.js` | Orchestrator: pointer input, turn flow, HUD, main menu + music player screens, theme switching |
 | `boardView.js` | All board DOM: tile placement/animation, popups, hints |
-| `audio.js` | Web Audio synth: polyphonic SFX + generative ambient BGM (Boards of Canada-style tape pads, dusty kit, vinyl crackle), per-theme progressions |
+| `audio.js` | Web Audio synth: polyphonic SFX + generative ambient BGM (Boards of Canada-style tape pads, dusty kit, vinyl crackle), per-theme progressions; BGM doubles as the 4-track music player |
 | `themes.js` | Pure data: 4 themes (emojis, colors, CSS vars, BGM note loops) rotating every 2 levels |
 | `harmony.js` | Pure music theory helpers: chord/bass/pattern lookup per bar, chord-tone quantization so SFX harmonize with the BGM |
 | `index.html` / `style.css` | Shell + styling; colors driven by CSS custom properties so themes cross-fade |

@@ -56,6 +56,7 @@
       <div class="progress"><div id="progress-fill" class="progress-fill"></div></div>
       <div class="controls">
         <button id="restart" type="button">New Game</button>
+        <button id="menu-btn" type="button" aria-label="Main menu">☰</button>
         <button id="sound" type="button" aria-label="Toggle sound">🔊</button>
       </div>
     </header>
@@ -67,9 +68,33 @@
       <p id="new-best" class="new-best hidden">🏆 New best!</p>
       <h3>Top scores</h3>
       <ol id="top3" class="top3"></ol>
-      <button id="play-again" type="button">Play again</button>
+      <div class="gameover-actions">
+        <button id="play-again" type="button">Play again</button>
+        <button id="gameover-menu" type="button" class="ghost-btn">Menu</button>
+      </div>
     </div>
   </main>
+  <div id="menu" class="menu">
+    <div class="menu-card">
+      <div class="menu-logo" aria-hidden="true">💎</div>
+      <h1 class="menu-title">Gems</h1>
+      <p class="menu-sub">Match 3 · 25 moves · 4 themes</p>
+      <button id="play-btn" class="big-btn" type="button">▶&nbsp;&nbsp;Play</button>
+      <button id="music-btn" class="big-btn" type="button">🎵&nbsp;&nbsp;Music</button>
+      <button id="menu-sound" class="round-btn" type="button" aria-label="Toggle sound">🔊</button>
+    </div>
+  </div>
+  <div id="player" class="player" hidden>
+    <div class="player-card">
+      <div class="player-head">
+        <button id="player-back" class="round-btn" type="button" aria-label="Back to menu">←</button>
+        <h2>Music</h2>
+        <span class="spacer"></span>
+      </div>
+      <p class="player-sub">The four game themes. Tap a track to play it, tap it again to stop.</p>
+      <ul id="track-list" class="track-list"></ul>
+    </div>
+  </div>
   <script type="module" src="game.js"></script>
 </body>
 </html>

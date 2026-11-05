@@ -1,4 +1,4 @@
-import { N } from "./themes.js";
+import { N, THEMES } from "./themes.js";
 import { chordAt, bassAt, bassLine, patternAt, chordTones, quantizeToChord, drumHits, polyHits, percHits, bassPatchForLevel } from "./harmony.js";
 
 export function createSfx(getTheme, getLevel = () => 1) {
@@ -11,6 +11,10 @@ export function createSfx(getTheme, getLevel = () => 1) {
   let lfoGain = null;
   let muted = localStorage.getItem("gems-muted") === "1";
   let chirped = false;
+  let bgmOn = false;
+  let override = null;
+  const effTheme = () => override || getTheme();
+  const trackLevel = (theme) => THEMES.indexOf(theme) * 2 + 3;
 
   function ensure() {
     if (!ctx) {
@@ -244,7 +248,7 @@ export function createSfx(getTheme, getLevel = () => 1) {
   }
 
   function makeBgm() {
-    let cfg = getTheme().bgm;
+    let cfg = effTheme().bgm;
     let patch = bassPatchForLevel(getLevel());
     return {
       setTheme(t, level) {
@@ -270,7 +274,7 @@ export function createSfx(getTheme, getLevel = () => 1) {
         try {
           const ac = ensure();
           if (!ac || muted) return;
-          const theme = getTheme();
+          const theme = effTheme();
           const ahead = ac.currentTime + 1.0;
           while (this.nextBar < ahead) {
             const t = this.nextBar;
@@ -313,16 +317,37 @@ export function createSfx(getTheme, getLevel = () => 1) {
   const bgm = makeBgm();
 
   return {
-    setTheme(t, level) { bgm.setTheme(t, level); },
+    setTheme(t, level) { override = null; bgm.setTheme(t, level); },
     unlock() {
       const ac = ensure();
       if (ac && !chirped) {
         chirped = true;
         chord([N.E5, N.G5, N.C6], 0.14, "square", 0.1, 0, 0.05);
-        bgm.start();
       }
     },
+    startBgm() {
+      override = null;
+      bgm.setTheme(getTheme(), getLevel());
+      bgmOn = true;
+      bgm.start();
+    },
+    playTrack(theme) {
+      override = theme;
+      bgm.setTheme(theme, trackLevel(theme));
+      bgmOn = true;
+      bgm.start();
+    },
+    stopTrack() {
+      override = null;
+      bgmOn = false;
+      bgm.stop();
+    },
+    stopBgm() {
+      bgmOn = false;
+      bgm.stop();
+    },
     get muted() { return muted; },
+    get playingTrack() { return override; },
     toggle() {
       muted = !muted;
       localStorage.setItem("gems-muted", muted ? "1" : "0");
@@ -336,7 +361,7 @@ export function createSfx(getTheme, getLevel = () => 1) {
         }
       } catch { /* ignore */ }
       if (muted) bgm.stop();
-      else bgm.start();
+      else if (bgmOn) bgm.start();
       return muted;
     },
     swap() {
